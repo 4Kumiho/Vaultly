@@ -1,0 +1,13 @@
+#pragma once
+
+// Generato da CMake (configure_file) in build/generated/Version.h: non modificare quello.
+// La versione si cambia in CMakeLists.txt: project(Bankeviour VERSION x.y.z).
+
+#define BANKEVIOUR_VERSION "@PROJECT_VERSION@"
+
+// Da dove l'app scarica le informazioni sugli aggiornamenti (vuoto = aggiornamenti disattivati).
+#define BANKEVIOUR_UPDATE_FEED_URL "@BANKEVIOUR_UPDATE_FEED_URL@"
+
+// Chiave pubblica EdDSA: un aggiornamento viene installato solo se è firmato con la chiave
+// privata corrispondente (che sta fuori dal repository, vedi scripts/release.ps1).
+#define BANKEVIOUR_UPDATE_PUBLIC_KEY "@BANKEVIOUR_UPDATE_PUBLIC_KEY@"

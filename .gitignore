@@ -1,0 +1,41 @@
+# Build
+/build/
+/build-*/
+CMakeUserPresets.json
+
+# Eseguibile e DLL Qt copiati nella root da windeployqt (si rigenerano con la build Release)
+/Bankeviour.exe
+/*.dll
+/generic/
+/iconengines/
+/imageformats/
+/networkinformation/
+/platforms/
+/sqldrivers/
+/styles/
+/tls/
+
+# Output di release e installer (si pubblicano su GitHub Releases, non nel repository)
+/dist/
+/release/
+
+# Dati degli utenti: ogni installazione ha il SUO database in %APPDATA%\Bankeviour.
+# Qui per sicurezza, se mai finisse una copia nella cartella del progetto.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.backup*
+
+# Chiavi di firma degli aggiornamenti: MAI nel repository
+*.key
+*.pem
+/keys/
+
+# Dipendenze scaricate (vedi scripts/)
+/third_party/
+
+# IDE
+.vscode/
+.idea/
+*.user

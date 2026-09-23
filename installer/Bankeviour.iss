@@ -1,0 +1,68 @@
+; Installer di Bankeviour (Inno Setup 6). Non si compila a mano: lo fa scripts/release.ps1,
+; che passa AppVersion, SourceDir (cartella con exe + DLL) e OutputDir.
+;
+; Installazione per utente (nessun permesso di amministratore), così anche gli aggiornamenti
+; automatici non chiedono conferme UAC.
+;
+; I dati NON stanno qui: ogni utente ha il suo DB in %APPDATA%\Bankeviour, che né
+; l'installazione né la disinstallazione toccano.
+
+#ifndef AppVersion
+  #error "Manca AppVersion: usa scripts/release.ps1"
+#endif
+#ifndef SourceDir
+  #error "Manca SourceDir: usa scripts/release.ps1"
+#endif
+#ifndef OutputDir
+  #define OutputDir "."
+#endif
+
+#define AppName "Bankeviour"
+#define AppExe "Bankeviour.exe"
+
+[Setup]
+; AppId identifica l'app tra una versione e l'altra: non cambiarlo mai.
+AppId={{A09232E3-9344-4ED0-B942-A999AE35099D}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppVerName={#AppName} {#AppVersion}
+AppPublisher={#AppName}
+VersionInfoVersion={#AppVersion}
+DefaultDirName={localappdata}\Programs\{#AppName}
+DisableDirPage=yes
+DisableProgramGroupPage=yes
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+OutputDir={#OutputDir}
+OutputBaseFilename=Bankeviour-Setup-{#AppVersion}
+Compression=lzma2/max
+SolidCompression=yes
+WizardStyle=modern
+UninstallDisplayIcon={app}\{#AppExe}
+UninstallDisplayName={#AppName}
+; Se l'app è aperta, l'installer la chiude prima di sostituire i file.
+CloseApplications=force
+RestartApplications=no
+
+[Languages]
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+
+[InstallDelete]
+; Via i file della versione precedente (DLL e plugin Qt possono cambiare tra una versione e l'altra).
+; Riguarda solo la cartella del programma, mai i dati in %APPDATA%.
+Type: filesandordirs; Name: "{app}\*"
+
+[Files]
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Icons]
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+
+[Run]
+; Senza "skipifsilent": dopo un aggiornamento automatico (installer in modalità /SILENT) l'app riparte da sola.
+Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall
