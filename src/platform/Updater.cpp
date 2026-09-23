@@ -46,7 +46,7 @@ void __cdecl requestShutdown()
 
 void Updater::start()
 {
-    const char *feedUrl = BANKEVIOUR_UPDATE_FEED_URL;
+    const char *feedUrl = VAULTLY_UPDATE_FEED_URL;
     if (started || feedUrl[0] == '\0')
         return;
 
@@ -71,13 +71,13 @@ void Updater::start()
         return;
 
     // Senza una chiave pubblica valida non si parte: niente aggiornamenti non firmati.
-    if (!setPublicKey(BANKEVIOUR_UPDATE_PUBLIC_KEY))
+    if (!setPublicKey(VAULTLY_UPDATE_PUBLIC_KEY))
         return;
 
-    const std::wstring version = QStringLiteral(BANKEVIOUR_VERSION).toStdWString();
+    const std::wstring version = QStringLiteral(VAULTLY_VERSION).toStdWString();
     setLang("it");
     setAppcastUrl(feedUrl);
-    setAppDetails(L"Bankeviour", L"Bankeviour", version.c_str());
+    setAppDetails(L"Vaultly", L"Vaultly", version.c_str());
     setCanShutdown(&canShutdown);
     setShutdownRequest(&requestShutdown);
     setAutomaticCheck(1);

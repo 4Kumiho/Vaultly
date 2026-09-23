@@ -1,4 +1,4 @@
-# Bankeviour
+# Vaultly
 
 App desktop C++ con interfaccia Qt per tenere traccia di entrate e uscite personali, con un'area cifrata per le password dei propri account.
 
@@ -80,7 +80,7 @@ Toolchain installata (Windows):
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
-.\build\Bankeviour.exe
+.\build\Vaultly.exe
 ctest --test-dir build --output-on-failure
 ```
 
@@ -90,25 +90,25 @@ Eseguibile distribuibile nella root del progetto (exe + DLL Qt + cartelle dei pl
 
 ```powershell
 cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-release --target Bankeviour
-Copy-Item build-release\Bankeviour.exe . -Force
-windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw Bankeviour.exe
+cmake --build build-release --target Vaultly
+Copy-Item build-release\Vaultly.exe . -Force
+windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw Vaultly.exe
 ```
 
 Dopo un clone, prima della build: `powershell -File scripts\fetch-deps.ps1` (scarica WinSparkle in `third_party/`, ignorata da git; hash SHA-256 verificato).
 
 ## Release e aggiornamenti automatici
 
-- **Versione**: una sola fonte, `project(Bankeviour VERSION x.y.z)` in `CMakeLists.txt` → `build/generated/Version.h` (da `src/Version.h.in`).
-- **Aggiornamenti**: WinSparkle (`src/platform/Updater`), caricato a runtime da `WinSparkle.dll`. Controlla ogni 24 h `https://github.com/<repo>/releases/latest/download/appcast.xml`, chiede all'utente, scarica l'installer, **verifica la firma EdDSA**, chiude l'app e lancia l'installer in `/SILENT`; l'app riparte da sola. Senza `BANKEVIOUR_GITHUB_REPO` (build di sviluppo) gli aggiornamenti sono disattivati.
-- **Chiave privata di firma**: `%USERPROFILE%\.bankeviour\update-signing.key`. **Mai nel repository** (`*.key` è in `.gitignore`). Va salvata anche altrove: se si perde, le app già installate non accetteranno più aggiornamenti. La chiave pubblica è in `CMakeLists.txt` e `scripts/release.ps1`.
-- **Installer**: Inno Setup (`installer/Bankeviour.iss`), installazione per utente in `%LOCALAPPDATA%\Programs\Bankeviour`, senza UAC. `AppId` non va mai cambiato. Installazione e disinstallazione non toccano i dati in `%APPDATA%\Bankeviour`.
+- **Versione**: una sola fonte, `project(Vaultly VERSION x.y.z)` in `CMakeLists.txt` → `build/generated/Version.h` (da `src/Version.h.in`).
+- **Aggiornamenti**: WinSparkle (`src/platform/Updater`), caricato a runtime da `WinSparkle.dll`. Controlla ogni 24 h `https://github.com/<repo>/releases/latest/download/appcast.xml`, chiede all'utente, scarica l'installer, **verifica la firma EdDSA**, chiude l'app e lancia l'installer in `/SILENT`; l'app riparte da sola. Senza `VAULTLY_GITHUB_REPO` (build di sviluppo) gli aggiornamenti sono disattivati.
+- **Chiave privata di firma**: `%USERPROFILE%\.vaultly\update-signing.key`. **Mai nel repository** (`*.key` è in `.gitignore`). Va salvata anche altrove: se si perde, le app già installate non accetteranno più aggiornamenti. La chiave pubblica è in `CMakeLists.txt` e `scripts/release.ps1`.
+- **Installer**: Inno Setup (`installer/Vaultly.iss`), installazione per utente in `%LOCALAPPDATA%\Programs\Vaultly`, senza UAC. `AppId` non va mai cambiato. Installazione e disinstallazione non toccano i dati in `%APPDATA%\Vaultly`.
 - **Database degli utenti**: ogni installazione crea il proprio DB vuoto; non esiste un DB "di default" da distribuire. Le modifiche allo schema arrivano agli utenti tramite le migrazioni in `Database.cpp`, che partono al primo avvio della nuova versione: devono sempre conservare i dati esistenti.
 - **Fare una release**: alzare la versione in `CMakeLists.txt`, committare, poi
   `powershell -File scripts\release.ps1 -Notes "novità 1`nnovità 2" -Publish`
   (compila con il repo di `scripts/release.json`, esegue i test, crea e firma l'installer, scrive `appcast.xml`, crea tag e release GitHub con `gh`). Senza `-Publish` prepara solo i file in `release/<versione>/`.
 
-Il DB dell'app sta in `%APPDATA%\Bankeviour\bankeviour.db`. Lo schema è versionato con `PRAGMA user_version` (vedi `src/db/Database.cpp`): per modificarlo si aggiunge un nuovo step di migrazione, non si cambia quello esistente.
+Il DB dell'app sta in `%APPDATA%\Vaultly\vaultly.db`. Lo schema è versionato con `PRAGMA user_version` (vedi `src/db/Database.cpp`): per modificarlo si aggiunge un nuovo step di migrazione, non si cambia quello esistente.
 
 Moduli Qt da linkare: `Widgets`, `Sql`, `Charts`, `Network` (serve per `QPasswordDigestor`).
 
@@ -190,7 +190,7 @@ CREATE INDEX idx_vault_user ON vault_entries(user_id);
 ## Struttura progetto (proposta)
 
 ```
-Bankeviour/
+Vaultly/
 ├── CMakeLists.txt
 ├── src/
 │   ├── main.cpp
@@ -212,7 +212,7 @@ Bankeviour/
 - **Una sola finestra** (`MainWindow`): le pagine stanno in uno `SlideStack` e cambiano con uno scorrimento laterale. Dopo il login si entra in `HomePage`: intestazione (saluto, selettore Conti | Password, Esci) + un secondo `SlideStack` con le sezioni.
 - Niente `QDialog` o popup: i moduli sono pannelli che entrano da destra con sfondo scurito. Un nuovo modulo deriva da `SidePanel` (vedi `AccountPanel`, `TransactionPanel`, `VaultPanel`) e ha come genitore la `HomePage` (`overlayHost`), così copre anche l'intestazione. Conferme brevi con `Toast`.
 - Dashboard: schede dei conti in alto; sotto saldo + totali del periodo a sinistra, grafico (`BalanceChart`) a destra; lista movimenti (`TransactionList`) in fondo. La pagina scorre in verticale.
-- Dopo ogni modifica al codice si rigenera anche `Bankeviour.exe` nella root (build Release + `windeployqt`, vedi sotto).
+- Dopo ogni modifica al codice si rigenera anche `Vaultly.exe` nella root (build Release + `windeployqt`, vedi sotto).
 - **Tema scuro** in `ui/Theme.cpp` (palette + QSS centralizzato). I widget non hanno stili inline: scelgono l'aspetto con proprietà dinamiche (`role`, `variant`, `tone`, `selected`) o `objectName`, documentate in `Theme.h`. Dopo aver cambiato una di queste proprietà a runtime serve `Components::repolish()`.
 - **Animazioni** in `ui/Animations.h` (`fadeIn`, `shake`); gli importi importanti usano `AmountLabel`, che conta fino al nuovo valore.
 - Locale di default forzata a italiano (`main.cpp`), così date e importi sono coerenti con i testi.

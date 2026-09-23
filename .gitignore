@@ -4,7 +4,7 @@
 CMakeUserPresets.json
 
 # Eseguibile e DLL Qt copiati nella root da windeployqt (si rigenerano con la build Release)
-/Bankeviour.exe
+/Vaultly.exe
 /*.dll
 /generic/
 /iconengines/
@@ -19,7 +19,7 @@ CMakeUserPresets.json
 /dist/
 /release/
 
-# Dati degli utenti: ogni installazione ha il SUO database in %APPDATA%\Bankeviour.
+# Dati degli utenti: ogni installazione ha il SUO database in %APPDATA%\Vaultly.
 # Qui per sicurezza, se mai finisse una copia nella cartella del progetto.
 *.db
 *.db-journal

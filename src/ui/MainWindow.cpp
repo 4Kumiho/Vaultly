@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_register(new RegisterPage)
     , m_home(new HomePage)
 {
-    setWindowTitle("Bankeviour");
+    setWindowTitle("Vaultly");
     setMinimumSize(960, 640);
     resize(1180, 780);
 
@@ -25,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
     using Direction = SlideStack::Direction;
 
     const auto enterHome = [this](const Session &session) {
-        setWindowTitle(QString("Bankeviour - %1").arg(session.user.username));
+        setWindowTitle(QString("Vaultly - %1").arg(session.user.username));
         m_home->setSession(session);
         m_stack->slideTo(m_home, Direction::Forward);
         m_login->reset();
@@ -41,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_login, &LoginPage::loggedIn, this, enterHome);
     connect(m_register, &RegisterPage::registered, this, enterHome);
     connect(m_home, &HomePage::logoutRequested, this, [this] {
-        setWindowTitle("Bankeviour");
+        setWindowTitle("Vaultly");
         m_login->reset();
         m_stack->slideTo(m_login, Direction::Backward);
     });

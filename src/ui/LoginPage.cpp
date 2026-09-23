@@ -31,7 +31,7 @@ LoginPage::LoginPage(QWidget *parent)
     auto *layout = new QVBoxLayout(m_card);
     layout->setContentsMargins(36, 36, 36, 30);
     layout->setSpacing(6);
-    layout->addWidget(Components::label("BANKEVIOUR", "brand", m_card));
+    layout->addWidget(Components::label("VAULTLY", "brand", m_card));
     layout->addSpacing(6);
     layout->addWidget(Components::label(tr("Bentornato"), "title", m_card));
     layout->addWidget(Components::label(tr("Accedi per vedere i tuoi conti."), "subtitle", m_card));
@@ -55,7 +55,7 @@ LoginPage::LoginPage(QWidget *parent)
     m_checkUpdates->hide();
     auto *about = new QHBoxLayout;
     about->addStretch();
-    about->addWidget(Components::label(tr("Versione %1").arg(BANKEVIOUR_VERSION), "hint", m_card));
+    about->addWidget(Components::label(tr("Versione %1").arg(VAULTLY_VERSION), "hint", m_card));
     about->addWidget(m_checkUpdates);
     about->addStretch();
     layout->addSpacing(6);

@@ -1,10 +1,10 @@
-; Installer di Bankeviour (Inno Setup 6). Non si compila a mano: lo fa scripts/release.ps1,
+; Installer di Vaultly (Inno Setup 6). Non si compila a mano: lo fa scripts/release.ps1,
 ; che passa AppVersion, SourceDir (cartella con exe + DLL) e OutputDir.
 ;
 ; Installazione per utente (nessun permesso di amministratore), così anche gli aggiornamenti
 ; automatici non chiedono conferme UAC.
 ;
-; I dati NON stanno qui: ogni utente ha il suo DB in %APPDATA%\Bankeviour, che né
+; I dati NON stanno qui: ogni utente ha il suo DB in %APPDATA%\Vaultly, che né
 ; l'installazione né la disinstallazione toccano.
 
 #ifndef AppVersion
@@ -17,8 +17,8 @@
   #define OutputDir "."
 #endif
 
-#define AppName "Bankeviour"
-#define AppExe "Bankeviour.exe"
+#define AppName "Vaultly"
+#define AppExe "Vaultly.exe"
 
 [Setup]
 ; AppId identifica l'app tra una versione e l'altra: non cambiarlo mai.
@@ -35,7 +35,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
-OutputBaseFilename=Bankeviour-Setup-{#AppVersion}
+OutputBaseFilename=Vaultly-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 # Versione dell'app: si alza qui a ogni release (vedi scripts/release.ps1).
-project(Bankeviour VERSION 1.0.0 LANGUAGES CXX)
+project(Vaultly VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,22 +9,22 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Charts Network Test)
 qt_standard_project_setup()
 
 # --- Aggiornamenti automatici (WinSparkle) ---
-set(BANKEVIOUR_GITHUB_REPO "" CACHE STRING
+set(VAULTLY_GITHUB_REPO "" CACHE STRING
     "Repository GitHub (proprietario/nome) delle release. Vuoto = aggiornamenti disattivati.")
-if(BANKEVIOUR_GITHUB_REPO)
-    set(BANKEVIOUR_UPDATE_FEED_URL
-        "https://github.com/${BANKEVIOUR_GITHUB_REPO}/releases/latest/download/appcast.xml")
+if(VAULTLY_GITHUB_REPO)
+    set(VAULTLY_UPDATE_FEED_URL
+        "https://github.com/${VAULTLY_GITHUB_REPO}/releases/latest/download/appcast.xml")
 else()
-    set(BANKEVIOUR_UPDATE_FEED_URL "")
+    set(VAULTLY_UPDATE_FEED_URL "")
 endif()
-# Chiave pubblica: può stare nel repository. La privata sta in %USERPROFILE%\.bankeviour.
-set(BANKEVIOUR_UPDATE_PUBLIC_KEY "YgjC4rRMQjdPz1CfZzWaX7JYjNnO7yXSm7nfsL0MNZ8=")
+# Chiave pubblica: può stare nel repository. La privata sta in %USERPROFILE%\.vaultly.
+set(VAULTLY_UPDATE_PUBLIC_KEY "YgjC4rRMQjdPz1CfZzWaX7JYjNnO7yXSm7nfsL0MNZ8=")
 set(WINSPARKLE_DLL "${CMAKE_SOURCE_DIR}/third_party/WinSparkle-0.9.4/x64/Release/WinSparkle.dll")
 
 configure_file(src/Version.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/Version.h" @ONLY)
 
 # Logica e accesso al DB: nessuna dipendenza dai widget, così i test la usano direttamente.
-qt_add_library(bankeviour_core STATIC
+qt_add_library(vaultly_core STATIC
     src/core/Account.h
     src/core/AccountService.h
     src/core/AccountService.cpp
@@ -59,10 +59,10 @@ qt_add_library(bankeviour_core STATIC
     src/db/VaultRepository.h
     src/db/VaultRepository.cpp
 )
-target_include_directories(bankeviour_core PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}/generated")
-target_link_libraries(bankeviour_core PUBLIC Qt6::Sql Qt6::Network bcrypt)
+target_include_directories(vaultly_core PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_link_libraries(vaultly_core PUBLIC Qt6::Sql Qt6::Network bcrypt)
 
-qt_add_executable(Bankeviour WIN32
+qt_add_executable(Vaultly WIN32
     src/main.cpp
     src/platform/Updater.h
     src/platform/Updater.cpp
@@ -105,19 +105,19 @@ qt_add_executable(Bankeviour WIN32
     src/ui/VaultPanel.h
     src/ui/VaultPanel.cpp
 )
-target_link_libraries(Bankeviour PRIVATE bankeviour_core Qt6::Widgets Qt6::Charts)
+target_link_libraries(Vaultly PRIVATE vaultly_core Qt6::Widgets Qt6::Charts)
 
 # WinSparkle.dll accanto all'exe (si carica a runtime, vedi platform/Updater).
 # Si scarica con scripts/fetch-deps.ps1; se manca, l'app funziona senza aggiornamenti.
 if(EXISTS "${WINSPARKLE_DLL}")
-    add_custom_command(TARGET Bankeviour POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${WINSPARKLE_DLL}" "$<TARGET_FILE_DIR:Bankeviour>")
+    add_custom_command(TARGET Vaultly POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${WINSPARKLE_DLL}" "$<TARGET_FILE_DIR:Vaultly>")
 endif()
 
 enable_testing()
 
 foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault)
     qt_add_executable(${test} tests/${test}.cpp)
-    target_link_libraries(${test} PRIVATE bankeviour_core Qt6::Test)
+    target_link_libraries(${test} PRIVATE vaultly_core Qt6::Test)
     add_test(NAME ${test} COMMAND ${test})
 endforeach()
