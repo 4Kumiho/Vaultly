@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 # Versione dell'app: si alza qui a ogni release (vedi scripts/release.ps1).
-project(Vaultly VERSION 1.0.3 LANGUAGES C CXX)
+project(Vaultly VERSION 1.0.4 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -123,7 +123,7 @@ qt_add_resources(Vaultly "assets" PREFIX "/" FILES assets/vaultly.png)
 
 enable_testing()
 
-foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update)
+foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update tst_recovery)
     qt_add_executable(${test} tests/${test}.cpp)
     target_link_libraries(${test} PRIVATE vaultly_core Qt6::Test)
     add_test(NAME ${test} COMMAND ${test})

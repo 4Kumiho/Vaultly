@@ -18,6 +18,10 @@ constexpr int kFirstCheckDelayMs = 4000;
 constexpr int kCheckIntervalMs = 24 * 60 * 60 * 1000;
 const char *const kSkippedVersionKey = "updates/skippedVersion";
 
+// QSettings in HKCU\Software\Vaultly\Vaultly. Nomi espliciti: l'app non imposta organizationName (vedi main.cpp).
+const char *const kSettingsOrganization = "Vaultly";
+const char *const kSettingsApplication = "Vaultly";
+
 QNetworkRequest makeRequest(const QUrl &url)
 {
     QNetworkRequest request(url);
@@ -88,7 +92,8 @@ void UpdateService::onCheckFinished(QNetworkReply *reply, bool manual)
         emit upToDate();
         return;
     }
-    const QString skipped = QSettings().value(kSkippedVersionKey).toString();
+    const QString skipped =
+        QSettings(kSettingsOrganization, kSettingsApplication).value(kSkippedVersionKey).toString();
     if (!manual && info->version == skipped)
         return;
 
@@ -163,7 +168,7 @@ void UpdateService::onDownloadFinished()
 void UpdateService::skipCurrentUpdate()
 {
     if (!m_update.version.isEmpty())
-        QSettings().setValue(kSkippedVersionKey, m_update.version);
+        QSettings(kSettingsOrganization, kSettingsApplication).setValue(kSkippedVersionKey, m_update.version);
 }
 
 void UpdateService::installAndQuit()

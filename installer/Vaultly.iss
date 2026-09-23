@@ -4,8 +4,9 @@
 ; Installazione per utente (nessun permesso di amministratore), così anche gli aggiornamenti
 ; automatici non chiedono conferme UAC.
 ;
-; I dati NON stanno qui: ogni utente ha il suo DB in %APPDATA%\Vaultly, che né
-; l'installazione né la disinstallazione toccano.
+; Dati: ogni utente di Windows ha il suo DB in %APPDATA%\Vaultly, creato vuoto al primo avvio.
+; L'installazione (e quindi ogni aggiornamento) non lo tocca; la DISINSTALLAZIONE cancella tutto:
+; programma, dati, file temporanei degli aggiornamenti e impostazioni nel registro.
 
 #ifndef AppVersion
   #error "Manca AppVersion: usa scripts/release.ps1"
@@ -59,6 +60,16 @@ Type: filesandordirs; Name: "{app}\*"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[UninstallDelete]
+; Disinstallare = non lasciare nulla. Nessuna domanda: conti, movimenti e password vengono eliminati.
+Type: filesandordirs; Name: "{userappdata}\{#AppName}"
+Type: filesandordirs; Name: "{%TEMP}\{#AppName}-update"
+Type: filesandordirs; Name: "{app}"
+
+[Registry]
+; Impostazioni (versione saltata; WinSparkle fino alla 1.0.2): la chiave si elimina alla disinstallazione.
+Root: HKCU; Subkey: "Software\{#AppName}"; Flags: uninsdeletekey
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"

@@ -1,5 +1,8 @@
 #include "db/Database.h"
 
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -180,6 +183,163 @@ bool Database::open(const QString &path, QString *error)
     }
     if (!db.commit())
         return fail(db.lastError(), error);
+    return true;
+}
+
+namespace {
+
+// Esegue una query preparata con i valori dati; false (ed errore) se fallisce.
+bool run(QSqlQuery &q, const QString &sql, const QVariantList &values, QString *error)
+{
+    if (!q.prepare(sql))
+        return fail(q.lastError(), error);
+    for (const QVariant &v : values)
+        q.addBindValue(v);
+    if (!q.exec())
+        return fail(q.lastError(), error);
+    return true;
+}
+
+QList<qint64> ids(QSqlDatabase &db, const QString &sql, const QVariantList &values, QString *error, bool *ok)
+{
+    QList<qint64> result;
+    QSqlQuery q(db);
+    *ok = run(q, sql, values, error);
+    while (*ok && q.next())
+        result.append(q.value(0).toLongLong());
+    return result;
+}
+
+// Copia utenti, conti, movimenti e voci dell'area password dal DB "other" (già ATTACH).
+// Gli id cambiano; le categorie si abbinano per nome e tipo.
+bool copyUsers(QSqlDatabase &db, int *imported, QString *error)
+{
+    bool ok = true;
+    const auto userIds = ids(db,
+                             "SELECT id FROM other.users "
+                             "WHERE username NOT IN (SELECT username FROM main.users)",
+                             {}, error, &ok);
+    if (!ok)
+        return false;
+
+    QSqlQuery q(db);
+    for (const qint64 oldUser : userIds) {
+        if (!run(q,
+                 "INSERT INTO main.users (username, password_hash, salt, iterations, created_at, vault_salt) "
+                 "SELECT username, password_hash, salt, iterations, created_at, vault_salt "
+                 "FROM other.users WHERE id = ?",
+                 {oldUser}, error))
+            return false;
+        const qint64 newUser = q.lastInsertId().toLongLong();
+
+        const auto accountIds = ids(db, "SELECT id FROM other.accounts WHERE user_id = ?", {oldUser}, error, &ok);
+        if (!ok)
+            return false;
+        for (const qint64 oldAccount : accountIds) {
+            if (!run(q,
+                     "INSERT INTO main.accounts (user_id, name, currency_code, initial_balance, created_at) "
+                     "SELECT ?, name, currency_code, initial_balance, created_at FROM other.accounts WHERE id = ?",
+                     {newUser, oldAccount}, error))
+                return false;
+            const qint64 newAccount = q.lastInsertId().toLongLong();
+            if (!run(q,
+                     "INSERT INTO main.transactions "
+                     "(account_id, category_id, amount, type, description, occurred_at) "
+                     "SELECT ?, (SELECT m.id FROM main.categories m JOIN other.categories o "
+                     "           ON o.name = m.name AND o.type = m.type WHERE o.id = t.category_id), "
+                     "       t.amount, t.type, t.description, t.occurred_at "
+                     "FROM other.transactions t WHERE t.account_id = ?",
+                     {newAccount, oldAccount}, error))
+                return false;
+        }
+
+        // Le voci restano cifrate: chiave = password dell'utente + vault_salt, copiato sopra.
+        if (!run(q,
+                 "INSERT INTO main.vault_entries (user_id, data, created_at, updated_at) "
+                 "SELECT ?, data, created_at, updated_at FROM other.vault_entries WHERE user_id = ?",
+                 {newUser, oldUser}, error))
+            return false;
+        ++*imported;
+    }
+    return true;
+}
+
+} // namespace
+
+std::optional<int> Database::importUsersFrom(const QString &otherPath, int *conflicts, QString *error)
+{
+    QSqlDatabase db = QSqlDatabase::database();
+    {
+        QSqlQuery q(db);
+        if (!run(q, "ATTACH DATABASE ? AS other", {otherPath}, error))
+            return std::nullopt;
+    }
+
+    std::optional<int> result;
+    {
+        QSqlQuery q(db);
+        const bool sameSchema = q.exec("PRAGMA other.user_version") && q.next()
+            && q.value(0).toInt() == kSchemaVersion;
+        q.finish();
+        if (!sameSchema) {
+            if (error)
+                *error = QStringLiteral("Versione del database da importare non supportata.");
+        } else if (q.exec("SELECT COUNT(*) FROM other.users WHERE username IN (SELECT username FROM main.users)")
+                   && q.next()) {
+            if (conflicts)
+                *conflicts = q.value(0).toInt();
+            q.finish();
+
+            int imported = 0;
+            db.transaction();
+            if (copyUsers(db, &imported, error) && db.commit())
+                result = imported;
+            else
+                db.rollback();
+        } else {
+            fail(q.lastError(), error);
+        }
+    }
+
+    // DETACH solo quando non restano query aperte su "other".
+    QSqlQuery(db).exec("DETACH DATABASE other");
+    return result;
+}
+
+bool Database::openAppDatabase(const QString &dataDir, QString *error)
+{
+    const QString path = dataDir + "/vaultly.db";
+    // La 1.0.3 impostava l'organizationName e Qt metteva i dati in <AppData>/Vaultly/Vaultly.
+    const QString misplacedDir = dataDir + "/Vaultly";
+    const QString misplaced = misplacedDir + "/vaultly.db";
+
+    QDir().mkpath(dataDir);
+    if (QFile::exists(misplaced) && !QFile::exists(path)) {
+        if (!QFile::rename(misplaced, path)) {
+            if (error)
+                *error = QStringLiteral("Impossibile spostare %1").arg(misplaced);
+            return false;
+        }
+        QDir().rmdir(misplacedDir);
+    }
+
+    if (!open(path, error))
+        return false;
+
+    if (QFile::exists(misplaced)) {
+        int conflicts = 0;
+        // Se l'import fallisce il file resta dov'è e si riprova al prossimo avvio.
+        if (importUsersFrom(misplaced, &conflicts)) {
+            if (conflicts == 0) {
+                QFile::remove(misplaced);
+            } else {
+                // Utenti con lo stesso nome in entrambi: non si sovrascrive nulla, il file si tiene.
+                const QString stamp = QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss");
+                QFile::rename(misplaced, QStringLiteral("%1/vaultly-recupero-%2.db").arg(dataDir, stamp));
+            }
+            QDir().rmdir(misplacedDir);
+        }
+    }
     return true;
 }
 
