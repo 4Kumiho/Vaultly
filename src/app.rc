@@ -1,0 +1,2 @@
+// Risorse Windows dell'eseguibile: icona mostrata in Esplora file, barra delle applicazioni e collegamenti.
+IDI_ICON1 ICON "../assets/vaultly.ico"

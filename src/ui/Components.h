@@ -14,6 +14,9 @@ namespace Components {
 QLabel *label(const QString &text, const char *role, QWidget *parent = nullptr);
 QPushButton *button(const QString &text, const char *variant, QWidget *parent = nullptr);
 
+// Icona dell'app + "VAULTLY", in cima alle schede di login e registrazione.
+QWidget *brand(QWidget *parent = nullptr);
+
 // Riquadro con angoli arrotondati e ombra.
 QFrame *card(QWidget *parent = nullptr);
 

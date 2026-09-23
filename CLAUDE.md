@@ -201,6 +201,8 @@ Vaultly/
 │   ├── ui/            # MainWindow → LoginPage | RegisterPage | HomePage (DashboardPage, VaultPage),
 │   │                  # pannelli (SidePanel e derivati), Theme, Animations, Components, Toast
 │   └── Version.h.in   # versione, URL e chiave pubblica degli aggiornamenti
+├── assets/            # vaultly.png (1024) e vaultly.ico (16–256): icona originale dell'app
+├── tools/make-icon/   # programma Qt che disegna l'icona e genera png + ico (non fa parte della build)
 ├── installer/         # script Inno Setup
 ├── scripts/           # fetch-deps.ps1, release.ps1, release.json
 └── tests/             # un eseguibile Qt Test per area (auth, money, accounts, transactions,
@@ -215,6 +217,7 @@ Vaultly/
 - Dopo ogni modifica al codice si rigenera anche `Vaultly.exe` nella root (build Release + `windeployqt`, vedi sotto).
 - **Tema scuro** in `ui/Theme.cpp` (palette + QSS centralizzato). I widget non hanno stili inline: scelgono l'aspetto con proprietà dinamiche (`role`, `variant`, `tone`, `selected`) o `objectName`, documentate in `Theme.h`. Dopo aver cambiato una di queste proprietà a runtime serve `Components::repolish()`.
 - **Animazioni** in `ui/Animations.h` (`fadeIn`, `shake`); gli importi importanti usano `AmountLabel`, che conta fino al nuovo valore.
+- **Icona**: `assets/vaultly.ico` finisce nell'exe tramite `src/app.rc` e nell'installer (`SetupIconFile`); `assets/vaultly.png` è nelle risorse Qt (`:/assets/vaultly.png`) per la finestra e il logo di login/registrazione (`Components::brand`). Niente loghi o immagini di terzi senza licenza.
 - Locale di default forzata a italiano (`main.cpp`), così date e importi sono coerenti con i testi.
 
 ## Domande aperte

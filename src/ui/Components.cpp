@@ -7,6 +7,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QMouseEvent>
+#include <QPixmap>
 #include <QPushButton>
 #include <QStyle>
 #include <QVBoxLayout>
@@ -24,6 +25,25 @@ QPushButton *Components::button(const QString &text, const char *variant, QWidge
     b->setProperty("variant", variant);
     b->setCursor(Qt::PointingHandCursor);
     return b;
+}
+
+QWidget *Components::brand(QWidget *parent)
+{
+    auto *widget = new QWidget(parent);
+    auto *icon = new QLabel(widget);
+    const qreal dpr = widget->devicePixelRatioF();
+    QPixmap pixmap = QPixmap(":/assets/vaultly.png")
+                         .scaled(QSize(30, 30) * dpr, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    pixmap.setDevicePixelRatio(dpr);
+    icon->setPixmap(pixmap);
+
+    auto *layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(10);
+    layout->addWidget(icon);
+    layout->addWidget(label("VAULTLY", "brand", widget));
+    layout->addStretch();
+    return widget;
 }
 
 QFrame *Components::card(QWidget *parent)

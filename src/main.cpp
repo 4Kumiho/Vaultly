@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QIcon>
 #include <QMessageBox>
 #include <QStandardPaths>
 
@@ -14,6 +15,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName("Vaultly");
     QApplication::setApplicationVersion(VAULTLY_VERSION);
+    QApplication::setWindowIcon(QIcon(":/assets/vaultly.png"));
     // Testi dell'app in italiano: date e importi seguono la stessa lingua.
     QLocale::setDefault(QLocale(QLocale::Italian, QLocale::Italy));
     Theme::apply(app);

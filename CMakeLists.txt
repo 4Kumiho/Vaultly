@@ -63,6 +63,7 @@ target_include_directories(vaultly_core PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}/
 target_link_libraries(vaultly_core PUBLIC Qt6::Sql Qt6::Network bcrypt)
 
 qt_add_executable(Vaultly WIN32
+    src/app.rc
     src/main.cpp
     src/platform/Updater.h
     src/platform/Updater.cpp
@@ -106,6 +107,9 @@ qt_add_executable(Vaultly WIN32
     src/ui/VaultPanel.cpp
 )
 target_link_libraries(Vaultly PRIVATE vaultly_core Qt6::Widgets Qt6::Charts)
+
+# Icona (generata da tools/make-icon): nel .rc per l'exe, qui per finestra e schermate.
+qt_add_resources(Vaultly "assets" PREFIX "/" FILES assets/vaultly.png)
 
 # WinSparkle.dll accanto all'exe (si carica a runtime, vedi platform/Updater).
 # Si scarica con scripts/fetch-deps.ps1; se manca, l'app funziona senza aggiornamenti.

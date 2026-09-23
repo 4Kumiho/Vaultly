@@ -40,6 +40,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#AppExe}
+SetupIconFile=..\assets\vaultly.ico
 UninstallDisplayName={#AppName}
 ; Se l'app è aperta, l'installer la chiude prima di sostituire i file.
 CloseApplications=force

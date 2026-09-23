@@ -31,7 +31,7 @@ RegisterPage::RegisterPage(QWidget *parent)
     auto *layout = new QVBoxLayout(m_card);
     layout->setContentsMargins(36, 36, 36, 30);
     layout->setSpacing(6);
-    layout->addWidget(Components::label("VAULTLY", "brand", m_card));
+    layout->addWidget(Components::brand(m_card));
     layout->addSpacing(6);
     layout->addWidget(Components::label(tr("Crea il tuo account"), "title", m_card));
     layout->addWidget(Components::label(tr("Bastano uno username e una password."), "subtitle", m_card));
