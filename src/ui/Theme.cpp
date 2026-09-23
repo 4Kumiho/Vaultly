@@ -39,6 +39,59 @@ QLabel#rowIcon[tone="accent"]   { background: rgba(91, 140, 255, 0.16); color: #
 QFrame#listRow { background: transparent; border-radius: 10px; }
 QFrame#listRow:hover { background: #1e222c; }
 
+QLabel[role="tag"] {
+    background: rgba(91, 140, 255, 0.14);
+    color: #9db8ff;
+    border-radius: 9px;
+    padding: 1px 8px;
+    font-size: 8.5pt;
+    font-weight: 600;
+}
+
+QFrame#tagInput {
+    background: #0f1115;
+    border: 1px solid #2a2f3a;
+    border-radius: 10px;
+}
+QFrame#tagInput:hover { border-color: #3a4152; }
+QFrame#tagInput QLineEdit {
+    background: transparent;
+    border: none;
+    min-height: 28px;
+    padding: 0 4px;
+}
+QFrame#tagChip {
+    background: rgba(91, 140, 255, 0.18);
+    border-radius: 13px;
+}
+QFrame#tagChip QLabel { color: #b5c9ff; font-weight: 600; }
+QFrame#tagChip QToolButton {
+    background: transparent;
+    border: none;
+    color: #8fa8e0;
+    font-size: 11pt;
+    padding: 0 4px;
+}
+QFrame#tagChip QToolButton:hover { color: #ffffff; }
+
+QFrame#tagRow { background: transparent; border: 1px solid transparent; border-radius: 10px; }
+QFrame#tagRow:hover { background: #1e222c; }
+QFrame#tagRow[selected="true"] { background: #1a2133; border-color: #5b8cff; }
+QProgressBar#tagBar { background: #0f1115; border: none; border-radius: 3px; }
+QProgressBar#tagBar::chunk {
+    border-radius: 3px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5b8cff, stop:1 #8fb0ff);
+}
+QProgressBar#tagBar[tone="muted"]::chunk { background: #3a4152; }
+
+QListView {
+    background: #171a21;
+    border: 1px solid #2a2f3a;
+    color: #e6e8ee;
+    selection-background-color: #5b8cff;
+    outline: none;
+}
+
 QProgressBar {
     background: #0f1115;
     border: 1px solid #252a35;

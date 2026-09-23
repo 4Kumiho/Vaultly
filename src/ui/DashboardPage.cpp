@@ -1,6 +1,7 @@
 #include "ui/DashboardPage.h"
 
 #include "core/Money.h"
+#include "core/TagStats.h"
 #include "db/AccountRepository.h"
 #include "db/TransactionRepository.h"
 #include "ui/AccountCard.h"
@@ -9,6 +10,7 @@
 #include "ui/Animations.h"
 #include "ui/BalanceChart.h"
 #include "ui/Components.h"
+#include "ui/TagSpendingView.h"
 #include "ui/TransactionList.h"
 #include "ui/TransactionPanel.h"
 
@@ -188,16 +190,44 @@ QWidget *DashboardPage::buildAccountView()
     topRow->addWidget(balanceCard);
     topRow->addWidget(chartCard, 1);
 
+    // Spese per etichetta, sotto il grafico.
+    auto *tagCard = Components::card(view);
+    m_tagPeriodLabel = Components::label({}, "muted", tagCard);
+    m_tagView = new TagSpendingView(tagCard);
+    auto *tagTitles = new QVBoxLayout;
+    tagTitles->setSpacing(2);
+    tagTitles->addWidget(Components::label(tr("Spese per etichetta"), "sectionTitle", tagCard));
+    tagTitles->addWidget(m_tagPeriodLabel);
+    auto *tagHint = Components::label(
+        tr("Clicca un'etichetta per vederne i movimenti.\nUna spesa con più etichette conta in ciascuna."), "hint",
+        tagCard);
+    tagHint->setAlignment(Qt::AlignRight | Qt::AlignTop);
+    auto *tagTop = new QHBoxLayout;
+    tagTop->addLayout(tagTitles, 1);
+    tagTop->addWidget(tagHint, 0, Qt::AlignTop);
+    auto *tagLayout = new QVBoxLayout(tagCard);
+    tagLayout->setContentsMargins(24, 22, 24, 18);
+    tagLayout->setSpacing(12);
+    tagLayout->addLayout(tagTop);
+    tagLayout->addWidget(m_tagView);
+
     // Movimenti, sotto.
     auto *listCard = Components::card(view);
     m_periodLabel = Components::label({}, "muted", listCard);
+    m_clearFilter = Components::button(tr("Mostra tutti"), "link", listCard);
+    m_clearFilter->hide();
     auto *addButton = Components::button(tr("+  Aggiungi movimento"), "primary", listCard);
     m_list = new TransactionList(listCard);
 
+    auto *periodRow = new QHBoxLayout;
+    periodRow->setSpacing(6);
+    periodRow->addWidget(m_periodLabel);
+    periodRow->addWidget(m_clearFilter);
+    periodRow->addStretch();
     auto *listTitles = new QVBoxLayout;
     listTitles->setSpacing(2);
     listTitles->addWidget(Components::label(tr("Movimenti"), "sectionTitle", listCard));
-    listTitles->addWidget(m_periodLabel);
+    listTitles->addLayout(periodRow);
     auto *listTop = new QHBoxLayout;
     listTop->addLayout(listTitles, 1);
     listTop->addWidget(addButton, 0, Qt::AlignVCenter);
@@ -212,7 +242,20 @@ QWidget *DashboardPage::buildAccountView()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(18);
     layout->addLayout(topRow);
+    layout->addWidget(tagCard);
     layout->addWidget(listCard);
+
+    // Filtro della lista per etichetta: cliccare di nuovo la stessa lo toglie.
+    connect(m_tagView, &TagSpendingView::tagClicked, this, [this](const QString &tag) {
+        const bool same = m_tagFilter && m_tagFilter->compare(tag, Qt::CaseInsensitive) == 0
+            && m_tagFilter->isEmpty() == tag.isEmpty();
+        m_tagFilter = same ? std::nullopt : std::optional<QString>(tag);
+        refreshAccountView();
+    });
+    connect(m_clearFilter, &QPushButton::clicked, this, [this] {
+        m_tagFilter.reset();
+        refreshAccountView();
+    });
 
     connect(editButton, &QPushButton::clicked, this, [this] {
         if (const Account *account = findAccount(m_selectedId))
@@ -309,6 +352,9 @@ void DashboardPage::selectAccount(qint64 accountId)
     const Account *account = findAccount(accountId);
     if (!account)
         return;
+    // Il filtro per etichetta resta solo se si ricarica lo stesso conto (es. dopo un salvataggio).
+    if (accountId != m_selectedId)
+        m_tagFilter.reset();
     m_selectedId = accountId;
 
     for (AccountCard *card : std::as_const(m_cards))
@@ -346,14 +392,30 @@ void DashboardPage::refreshAccountView()
     };
     m_income->setText(withSign("+", totals.income));
     m_expense->setText(withSign(QLocale().negativeSign(), totals.expense));
-    m_periodLabel->setText(period);
+    m_tagPeriodLabel->setText(period);
+    m_tagView->setReport(TagStats::expensesByTag(m_transactions, from, end), account->currency, m_tagFilter);
 
+    // Filtro per etichetta: "" = uscite senza etichetta.
+    const auto matchesFilter = [this](const Transaction &t) {
+        if (!m_tagFilter)
+            return true;
+        if (m_tagFilter->isEmpty())
+            return t.type == TransactionType::Expense && t.tags.isEmpty();
+        return t.tags.contains(*m_tagFilter, Qt::CaseInsensitive);
+    };
     QList<Transaction> visible;
     for (const Transaction &t : std::as_const(m_transactions)) {
-        if (t.occurredAt >= from)
+        if (t.occurredAt >= from && matchesFilter(t))
             visible.append(t);
     }
-    m_list->setTransactions(visible, account->currency);
+
+    QString filterText;
+    if (m_tagFilter)
+        filterText = m_tagFilter->isEmpty() ? tr("spese senza etichetta") : QString("#%1").arg(*m_tagFilter);
+    m_periodLabel->setText(filterText.isEmpty() ? period : QString("%1  ·  %2").arg(period, filterText));
+    m_clearFilter->setVisible(m_tagFilter.has_value());
+    m_list->setTransactions(visible, account->currency,
+                            m_tagFilter ? tr("Nessun movimento con questo filtro nel periodo.") : QString());
 }
 
 const Account *DashboardPage::findAccount(qint64 accountId) const

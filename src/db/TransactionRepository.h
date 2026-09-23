@@ -10,12 +10,13 @@
 // i movimenti dei conti che appartengono a quell'utente.
 namespace TransactionRepository {
 
-// Dal più recente al più vecchio.
+// Dal più recente al più vecchio, con le etichette.
 QList<Transaction> listForAccount(qint64 accountId, qint64 userId);
 
 std::optional<Transaction> find(qint64 transactionId, qint64 userId);
 
-// `transaction.id` viene ignorato. Il chiamante deve aver già verificato che il conto sia dell'utente.
+// `transaction.id` e `transaction.tags` vengono ignorati (le etichette le salva TransactionService).
+// Il chiamante deve aver già verificato che il conto sia dell'utente.
 std::optional<qint64> insert(const Transaction &transaction, QString *error = nullptr);
 
 // Il conto del movimento non cambia.

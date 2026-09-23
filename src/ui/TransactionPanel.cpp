@@ -5,6 +5,7 @@
 #include "db/CategoryRepository.h"
 #include "ui/Animations.h"
 #include "ui/Components.h"
+#include "ui/TagInput.h"
 
 #include <QComboBox>
 #include <QDateTimeEdit>
@@ -46,6 +47,8 @@ TransactionPanel::TransactionPanel(QWidget *parent)
     m_description->setPlaceholderText(tr("Facoltativa, es. \"Spesa al supermercato\""));
     m_description->setMaxLength(200);
 
+    m_tags = new TagInput(d);
+
     m_error = new ErrorLabel(d);
 
     m_delete = Components::button({}, "danger", d);
@@ -64,6 +67,7 @@ TransactionPanel::TransactionPanel(QWidget *parent)
     Components::addField(layout, tr("Categoria"), m_category);
     Components::addField(layout, tr("Data e ora"), m_date);
     Components::addField(layout, tr("Descrizione"), m_description);
+    Components::addField(layout, tr("Etichette"), m_tags);
     layout->addWidget(m_error);
     layout->addStretch();
     layout->addWidget(m_delete, 0, Qt::AlignHCenter);
@@ -97,6 +101,7 @@ void TransactionPanel::openForCreate(qint64 userId, const Account &account)
     m_amount->clear();
     m_date->setDateTime(QDateTime::currentDateTime());
     m_description->clear();
+    m_tags->setTags({});
     m_delete->hide();
     open(m_amount);
 }
@@ -113,6 +118,7 @@ void TransactionPanel::openForEdit(qint64 userId, const Account &account, const 
     m_amount->setText(Money::formatNumber(transaction.amount, account.currency.minorUnits, QLocale(), false));
     m_date->setDateTime(transaction.occurredAt);
     m_description->setText(transaction.description);
+    m_tags->setTags(transaction.tags);
     m_delete->setText(tr("Elimina movimento"));
     m_delete->show();
     open(m_amount);
@@ -123,6 +129,7 @@ void TransactionPanel::prepare(const QString &title)
     m_title->setText(title);
     m_subtitle->setText(tr("Conto: %1").arg(m_account.name));
     m_amount->setPlaceholderText(Money::format(0, m_account.currency));
+    m_tags->setSuggestions(TransactionService::tagSuggestions(m_userId));
     m_confirmDelete = false;
     m_error->clearMessage();
 }
@@ -162,6 +169,7 @@ void TransactionPanel::save()
     t.amount = *amount;
     t.occurredAt = m_date->dateTime();
     t.description = m_description->text();
+    t.tags = m_tags->tags();
 
     const auto result = m_editing ? TransactionService::update(m_userId, t) : TransactionService::create(m_userId, t);
     if (!result.transaction) {

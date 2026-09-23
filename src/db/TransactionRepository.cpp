@@ -1,5 +1,7 @@
 #include "db/TransactionRepository.h"
 
+#include "db/TagRepository.h"
+
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QVariant>
@@ -50,6 +52,10 @@ QList<Transaction> TransactionRepository::listForAccount(qint64 accountId, qint6
         while (q.next())
             result.append(readTransaction(q));
     }
+
+    const auto tags = TagRepository::namesForAccount(accountId, userId);
+    for (Transaction &t : result)
+        t.tags = tags.value(t.id);
     return result;
 }
 
@@ -61,7 +67,9 @@ std::optional<Transaction> TransactionRepository::find(qint64 transactionId, qin
     q.addBindValue(userId);
     if (!q.exec() || !q.next())
         return std::nullopt;
-    return readTransaction(q);
+    Transaction t = readTransaction(q);
+    t.tags = TagRepository::namesForTransaction(t.id);
+    return t;
 }
 
 std::optional<qint64> TransactionRepository::insert(const Transaction &t, QString *error)

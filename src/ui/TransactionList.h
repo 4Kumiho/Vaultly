@@ -16,8 +16,9 @@ class TransactionList : public QWidget
 public:
     explicit TransactionList(QWidget *parent = nullptr);
 
-    // `transactions` dal più recente al più vecchio.
-    void setTransactions(const QList<Transaction> &transactions, const Currency &currency);
+    // `transactions` dal più recente al più vecchio. `emptyText`: messaggio se la lista è vuota.
+    void setTransactions(const QList<Transaction> &transactions, const Currency &currency,
+                         const QString &emptyText = {});
 
 signals:
     void transactionClicked(const Transaction &transaction);

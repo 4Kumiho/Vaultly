@@ -8,6 +8,8 @@
 #include <QList>
 #include <QWidget>
 
+#include <optional>
+
 class AccountCard;
 class AccountPanel;
 class AmountLabel;
@@ -15,6 +17,8 @@ class BalanceChart;
 class QFrame;
 class QHBoxLayout;
 class QLabel;
+class QPushButton;
+class TagSpendingView;
 class TransactionList;
 class TransactionPanel;
 
@@ -61,7 +65,11 @@ private:
     QLabel *m_expense;
     QLabel *m_totalsCaption;
     BalanceChart *m_chart;
+    QLabel *m_tagPeriodLabel;
+    TagSpendingView *m_tagView;
+    std::optional<QString> m_tagFilter; // etichetta filtrata nella lista; "" = spese senza etichetta
     QLabel *m_periodLabel;
+    QPushButton *m_clearFilter;
     TransactionList *m_list;
 
     AccountPanel *m_accountPanel;

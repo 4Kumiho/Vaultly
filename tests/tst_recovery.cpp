@@ -5,6 +5,7 @@
 #include "db/AccountRepository.h"
 #include "db/CategoryRepository.h"
 #include "db/Database.h"
+#include "db/TransactionRepository.h"
 
 #include <QDir>
 #include <QFile>
@@ -30,6 +31,7 @@ void addUser(const QString &name, qint64 initialBalance, qint64 expense)
         if (c.name == "Spesa" && c.type == TransactionType::Expense) t.categoryId = c.id;
     t.amount = expense;
     t.occurredAt = QDateTime(QDate(2026, 9, 1), QTime(10, 0));
+    t.tags = {"etichetta di " + name};
     TransactionService::create(s.user.id, t);
     VaultEntry e;
     e.title = "Gmail di " + name;
@@ -52,14 +54,17 @@ int userCount()
     return q.next() ? q.value(0).toInt() : -1;
 }
 
-// Login, saldo e area password di un utente nel DB aperto.
-void checkUser(const QString &name)
+// Login, saldo, etichette e area password di un utente nel DB aperto.
+void checkUser(const QString &name, bool withTags = true)
 {
     const auto login = AuthService::login(name, "segreto1");
     QVERIFY2(login.user, qPrintable(name));
     const auto accounts = AccountRepository::listForUser(login.user->id);
     QCOMPARE(accounts.size(), 1);
     QCOMPARE(AccountRepository::currentBalance(accounts[0].id, login.user->id), qint64(7500));
+    const auto txs = TransactionRepository::listForAccount(accounts[0].id, login.user->id);
+    QCOMPARE(txs.size(), 1);
+    QCOMPARE(txs[0].tags, withTags ? QStringList({"etichetta di " + name}) : QStringList());
     const auto vault = VaultService::list(login.session());
     QCOMPARE(vault.size(), 1);
     QCOMPARE(vault[0].password, "pw-" + name);
@@ -121,6 +126,29 @@ private slots:
         // Il "MARIO" della 1.0.3 non sovrascrive nulla: il file resta per un eventuale recupero.
         QCOMPARE(QDir(dir.path()).entryList({"vaultly-recupero-*.db"}).size(), 1);
         QVERIFY(!QFile::exists(dir.filePath("Vaultly/vaultly.db")));
+    }
+
+    void importsVersion2Database()
+    {
+        // Il DB della 1.0.3 è schema v2: senza tabelle delle etichette.
+        QTemporaryDir dir;
+        const QString misplaced = dir.filePath("Vaultly/vaultly.db");
+        createDb(dir.filePath("vaultly.db"), {"mario"});
+        createDb(misplaced, {"anna"});
+        QVERIFY(Database::open(misplaced));
+        {
+            QSqlQuery q;
+            QVERIFY(q.exec("DROP TABLE transaction_tags"));
+            QVERIFY(q.exec("DROP TABLE tags"));
+            QVERIFY(q.exec("PRAGMA user_version = 2"));
+        }
+        Database::close();
+
+        QVERIFY(Database::openAppDatabase(dir.path()));
+        QCOMPARE(userCount(), 2);
+        checkUser("mario");
+        checkUser("anna", false);
+        QVERIFY(!QFile::exists(misplaced));
     }
 
     void reopeningDoesNotDuplicate()

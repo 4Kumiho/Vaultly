@@ -13,6 +13,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class SegmentedControl;
+class TagInput;
 
 // Pannello laterale per aggiungere, modificare o eliminare un movimento.
 class TransactionPanel : public SidePanel
@@ -50,6 +51,7 @@ private:
     QComboBox *m_category;
     QDateTimeEdit *m_date;
     QLineEdit *m_description;
+    TagInput *m_tags;
     ErrorLabel *m_error;
     QPushButton *m_delete;
 };

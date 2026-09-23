@@ -2,9 +2,11 @@
 
 #include "db/AccountRepository.h"
 #include "db/CategoryRepository.h"
+#include "db/TagRepository.h"
 #include "db/TransactionRepository.h"
 
 #include <QCoreApplication>
+#include <QSqlDatabase>
 
 namespace {
 
@@ -18,8 +20,32 @@ QString tr(const char *text)
     return QCoreApplication::translate("TransactionService", text);
 }
 
+// Ripulisce le etichette (spazi, '#' iniziale, doppioni senza distinguere maiuscole)
+// e le ordina. Messaggio d'errore, o stringa vuota se vanno bene.
+QString normalizeTags(QStringList &tags)
+{
+    QStringList clean;
+    for (QString tag : std::as_const(tags)) {
+        tag = tag.trimmed();
+        while (tag.startsWith('#'))
+            tag.remove(0, 1);
+        tag = tag.simplified();
+        if (tag.isEmpty())
+            continue;
+        if (tag.size() > TransactionService::kMaxTagLength)
+            return tr("Un'etichetta può avere al massimo %1 caratteri.").arg(TransactionService::kMaxTagLength);
+        if (!clean.contains(tag, Qt::CaseInsensitive))
+            clean.append(tag);
+    }
+    if (clean.size() > TransactionService::kMaxTags)
+        return tr("Puoi usare al massimo %1 etichette per movimento.").arg(TransactionService::kMaxTags);
+    clean.sort(Qt::CaseInsensitive);
+    tags = clean;
+    return {};
+}
+
 // Restituisce un messaggio d'errore, o una stringa vuota se il movimento è valido.
-// Se valido, completa `t` (descrizione ripulita, nome categoria).
+// Se valido, completa `t` (descrizione ed etichette ripulite, nome categoria).
 QString validate(qint64 userId, Transaction &t)
 {
     if (!AccountRepository::find(t.accountId, userId))
@@ -34,10 +60,28 @@ QString validate(qint64 userId, Transaction &t)
         return tr("Scegli una categoria.");
     if (category->type != t.type)
         return tr("La categoria non corrisponde al tipo di movimento.");
+    if (const QString error = normalizeTags(t.tags); !error.isEmpty())
+        return error;
 
     t.categoryName = category->name;
     t.description = t.description.trimmed();
     return {};
+}
+
+// Collega le etichette al movimento (creando quelle nuove) e toglie quelle rimaste inutilizzate.
+bool saveTags(qint64 userId, const Transaction &t)
+{
+    QList<qint64> tagIds;
+    for (const QString &name : t.tags) {
+        const auto id = TagRepository::findOrCreate(userId, name);
+        if (!id)
+            return false;
+        tagIds.append(*id);
+    }
+    if (!TagRepository::setForTransaction(t.id, tagIds))
+        return false;
+    TagRepository::deleteUnused(userId);
+    return true;
 }
 
 } // namespace
@@ -48,10 +92,16 @@ TransactionService::Result TransactionService::create(qint64 userId, const Trans
     if (const QString error = validate(userId, t); !error.isEmpty())
         return failure(error);
 
+    // Movimento ed etichette insieme: o tutto o niente.
+    QSqlDatabase db = QSqlDatabase::database();
+    db.transaction();
     const auto id = TransactionRepository::insert(t);
-    if (!id)
+    if (id)
+        t.id = *id;
+    if (!id || !saveTags(userId, t) || !db.commit()) {
+        db.rollback();
         return failure(tr("Impossibile salvare il movimento."));
-    t.id = *id;
+    }
     return {t, {}};
 }
 
@@ -66,12 +116,24 @@ TransactionService::Result TransactionService::update(qint64 userId, const Trans
     if (const QString error = validate(userId, t); !error.isEmpty())
         return failure(error);
 
-    if (!TransactionRepository::update(t, userId))
+    QSqlDatabase db = QSqlDatabase::database();
+    db.transaction();
+    if (!TransactionRepository::update(t, userId) || !saveTags(userId, t) || !db.commit()) {
+        db.rollback();
         return failure(tr("Impossibile salvare il movimento."));
+    }
     return {t, {}};
 }
 
 bool TransactionService::remove(qint64 userId, qint64 transactionId)
 {
-    return TransactionRepository::remove(transactionId, userId);
+    if (!TransactionRepository::remove(transactionId, userId))
+        return false;
+    TagRepository::deleteUnused(userId);
+    return true;
+}
+
+QStringList TransactionService::tagSuggestions(qint64 userId)
+{
+    return TagRepository::namesForUser(userId);
 }

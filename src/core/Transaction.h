@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QString>
+#include <QStringList>
 
 enum class TransactionType { Income, Expense };
 
@@ -32,6 +33,7 @@ struct Transaction
     qint64 amount = 0;    // in unità minime, sempre > 0: il segno lo dà `type`
     QString description;
     QDateTime occurredAt; // ora locale
+    QStringList tags;     // etichette libere, in ordine alfabetico
 
     qint64 signedAmount() const { return type == TransactionType::Income ? amount : -amount; }
 };

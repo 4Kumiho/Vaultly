@@ -1,6 +1,7 @@
 #include "core/AccountService.h"
 
 #include "db/AccountRepository.h"
+#include "db/TagRepository.h"
 
 #include <QCoreApplication>
 
@@ -60,5 +61,9 @@ AccountService::Result AccountService::update(const Account &account, const QStr
 
 bool AccountService::remove(const Account &account)
 {
-    return AccountRepository::remove(account.id, account.userId);
+    if (!AccountRepository::remove(account.id, account.userId))
+        return false;
+    // I movimenti se ne vanno a cascata: le etichette usate solo lì restano orfane.
+    TagRepository::deleteUnused(account.userId);
+    return true;
 }

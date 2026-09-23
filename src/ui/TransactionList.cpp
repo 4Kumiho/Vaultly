@@ -50,9 +50,22 @@ public:
         auto *time = Components::label(QLocale().toString(t.occurredAt.time(), "HH:mm"), "muted", this);
         time->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
+        // Categoria seguita dalle etichette.
+        auto *titleRow = new QHBoxLayout;
+        titleRow->setSpacing(6);
+        titleRow->addWidget(title);
+        QList<QLabel *> pills;
+        for (const QString &tag : t.tags) {
+            auto *pill = Components::label(tag, "tag", this);
+            pill->setTextFormat(Qt::PlainText);
+            titleRow->addWidget(pill);
+            pills.append(pill);
+        }
+        titleRow->addStretch();
+
         auto *texts = new QVBoxLayout;
         texts->setSpacing(1);
-        texts->addWidget(title);
+        texts->addLayout(titleRow);
         texts->addWidget(subtitle);
 
         auto *right = new QVBoxLayout;
@@ -67,7 +80,8 @@ public:
         layout->addLayout(texts, 1);
         layout->addLayout(right);
 
-        for (QLabel *l : {icon, title, subtitle, amount, time})
+        pills << icon << title << subtitle << amount << time;
+        for (QLabel *l : std::as_const(pills))
             l->setAttribute(Qt::WA_TransparentForMouseEvents);
     }
 };
@@ -82,7 +96,8 @@ TransactionList::TransactionList(QWidget *parent)
     m_layout->setSpacing(2);
 }
 
-void TransactionList::setTransactions(const QList<Transaction> &transactions, const Currency &currency)
+void TransactionList::setTransactions(const QList<Transaction> &transactions, const Currency &currency,
+                                      const QString &emptyText)
 {
     while (QLayoutItem *item = m_layout->takeAt(0)) {
         if (QWidget *w = item->widget())
@@ -91,7 +106,8 @@ void TransactionList::setTransactions(const QList<Transaction> &transactions, co
     }
 
     if (transactions.isEmpty()) {
-        auto *empty = Components::label(tr("Nessun movimento in questo periodo."), "muted", this);
+        auto *empty = Components::label(emptyText.isEmpty() ? tr("Nessun movimento in questo periodo.") : emptyText,
+                                        "muted", this);
         empty->setAlignment(Qt::AlignCenter);
         empty->setMinimumHeight(80);
         m_layout->addWidget(empty);

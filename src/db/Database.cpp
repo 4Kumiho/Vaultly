@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -10,7 +11,9 @@
 
 namespace {
 
-constexpr int kSchemaVersion = 2;
+constexpr int kSchemaVersion = 3;
+// Versione più vecchia che importUsersFrom sa leggere (i DB della 1.0.3 sono v2).
+constexpr int kOldestImportableVersion = 2;
 
 const char *const kSchemaV1[] = {
     R"(CREATE TABLE users (
@@ -65,6 +68,23 @@ const char *const kSchemaV2[] = {
         updated_at TEXT    NOT NULL
     ))",
     "CREATE INDEX idx_vault_user ON vault_entries(user_id)",
+};
+
+// v3: etichette libere dei movimenti. Ogni utente ha le sue; nomi unici senza distinguere
+// maiuscole. Un'etichetta senza più movimenti viene eliminata (TagRepository::deleteUnused).
+const char *const kSchemaV3[] = {
+    R"(CREATE TABLE tags (
+        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name    TEXT    NOT NULL COLLATE NOCASE,
+        UNIQUE (user_id, name)
+    ))",
+    R"(CREATE TABLE transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id         INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+    ))",
+    "CREATE INDEX idx_txtags_tag ON transaction_tags(tag_id)",
 };
 
 struct CurrencySeed
@@ -141,14 +161,25 @@ bool createSchemaV1(QSqlDatabase &db, QString *error)
     return true;
 }
 
-bool createSchemaV2(QSqlDatabase &db, QString *error)
+template <size_t N>
+bool execAll(QSqlDatabase &db, const char *const (&statements)[N], QString *error)
 {
     QSqlQuery q(db);
-    for (const char *sql : kSchemaV2) {
+    for (const char *sql : statements) {
         if (!q.exec(QString::fromUtf8(sql)))
             return fail(q.lastError(), error);
     }
     return true;
+}
+
+bool createSchemaV2(QSqlDatabase &db, QString *error)
+{
+    return execAll(db, kSchemaV2, error);
+}
+
+bool createSchemaV3(QSqlDatabase &db, QString *error)
+{
+    return execAll(db, kSchemaV3, error);
 }
 
 } // namespace
@@ -173,7 +204,8 @@ bool Database::open(const QString &path, QString *error)
 
     // Migrazioni in ordine, tutte nella stessa transazione.
     db.transaction();
-    if ((version < 1 && !createSchemaV1(db, error)) || (version < 2 && !createSchemaV2(db, error))) {
+    if ((version < 1 && !createSchemaV1(db, error)) || (version < 2 && !createSchemaV2(db, error))
+        || (version < 3 && !createSchemaV3(db, error))) {
         db.rollback();
         return false;
     }
@@ -210,9 +242,9 @@ QList<qint64> ids(QSqlDatabase &db, const QString &sql, const QVariantList &valu
     return result;
 }
 
-// Copia utenti, conti, movimenti e voci dell'area password dal DB "other" (già ATTACH).
-// Gli id cambiano; le categorie si abbinano per nome e tipo.
-bool copyUsers(QSqlDatabase &db, int *imported, QString *error)
+// Copia utenti, conti, movimenti (con le etichette, se `otherHasTags`) e voci dell'area password
+// dal DB "other" (già ATTACH). Gli id cambiano; le categorie si abbinano per nome e tipo.
+bool copyUsers(QSqlDatabase &db, bool otherHasTags, int *imported, QString *error)
 {
     bool ok = true;
     const auto userIds = ids(db,
@@ -232,6 +264,20 @@ bool copyUsers(QSqlDatabase &db, int *imported, QString *error)
             return false;
         const qint64 newUser = q.lastInsertId().toLongLong();
 
+        // Etichette: vecchio id → nuovo id.
+        QHash<qint64, qint64> tagMap;
+        if (otherHasTags) {
+            const auto tagIds = ids(db, "SELECT id FROM other.tags WHERE user_id = ?", {oldUser}, error, &ok);
+            if (!ok)
+                return false;
+            for (const qint64 oldTag : tagIds) {
+                if (!run(q, "INSERT INTO main.tags (user_id, name) SELECT ?, name FROM other.tags WHERE id = ?",
+                         {newUser, oldTag}, error))
+                    return false;
+                tagMap.insert(oldTag, q.lastInsertId().toLongLong());
+            }
+        }
+
         const auto accountIds = ids(db, "SELECT id FROM other.accounts WHERE user_id = ?", {oldUser}, error, &ok);
         if (!ok)
             return false;
@@ -242,15 +288,35 @@ bool copyUsers(QSqlDatabase &db, int *imported, QString *error)
                      {newUser, oldAccount}, error))
                 return false;
             const qint64 newAccount = q.lastInsertId().toLongLong();
-            if (!run(q,
-                     "INSERT INTO main.transactions "
-                     "(account_id, category_id, amount, type, description, occurred_at) "
-                     "SELECT ?, (SELECT m.id FROM main.categories m JOIN other.categories o "
-                     "           ON o.name = m.name AND o.type = m.type WHERE o.id = t.category_id), "
-                     "       t.amount, t.type, t.description, t.occurred_at "
-                     "FROM other.transactions t WHERE t.account_id = ?",
-                     {newAccount, oldAccount}, error))
+
+            // Un movimento alla volta, per poter ricollegare le sue etichette.
+            const auto txIds =
+                ids(db, "SELECT id FROM other.transactions WHERE account_id = ?", {oldAccount}, error, &ok);
+            if (!ok)
                 return false;
+            for (const qint64 oldTx : txIds) {
+                if (!run(q,
+                         "INSERT INTO main.transactions "
+                         "(account_id, category_id, amount, type, description, occurred_at) "
+                         "SELECT ?, (SELECT m.id FROM main.categories m JOIN other.categories o "
+                         "           ON o.name = m.name AND o.type = m.type WHERE o.id = t.category_id), "
+                         "       t.amount, t.type, t.description, t.occurred_at "
+                         "FROM other.transactions t WHERE t.id = ?",
+                         {newAccount, oldTx}, error))
+                    return false;
+                const qint64 newTx = q.lastInsertId().toLongLong();
+                if (!otherHasTags)
+                    continue;
+                const auto txTags =
+                    ids(db, "SELECT tag_id FROM other.transaction_tags WHERE transaction_id = ?", {oldTx}, error, &ok);
+                if (!ok)
+                    return false;
+                for (const qint64 oldTag : txTags) {
+                    if (!run(q, "INSERT INTO main.transaction_tags (transaction_id, tag_id) VALUES (?, ?)",
+                             {newTx, tagMap.value(oldTag)}, error))
+                        return false;
+                }
+            }
         }
 
         // Le voci restano cifrate: chiave = password dell'utente + vault_salt, copiato sopra.
@@ -278,10 +344,9 @@ std::optional<int> Database::importUsersFrom(const QString &otherPath, int *conf
     std::optional<int> result;
     {
         QSqlQuery q(db);
-        const bool sameSchema = q.exec("PRAGMA other.user_version") && q.next()
-            && q.value(0).toInt() == kSchemaVersion;
+        const int otherVersion = q.exec("PRAGMA other.user_version") && q.next() ? q.value(0).toInt() : 0;
         q.finish();
-        if (!sameSchema) {
+        if (otherVersion < kOldestImportableVersion || otherVersion > kSchemaVersion) {
             if (error)
                 *error = QStringLiteral("Versione del database da importare non supportata.");
         } else if (q.exec("SELECT COUNT(*) FROM other.users WHERE username IN (SELECT username FROM main.users)")
@@ -292,7 +357,7 @@ std::optional<int> Database::importUsersFrom(const QString &otherPath, int *conf
 
             int imported = 0;
             db.transaction();
-            if (copyUsers(db, &imported, error) && db.commit())
+            if (copyUsers(db, otherVersion >= 3, &imported, error) && db.commit())
                 result = imported;
             else
                 db.rollback();

@@ -45,6 +45,8 @@ qt_add_library(vaultly_core STATIC
     src/core/Currency.h
     src/core/Money.h
     src/core/Money.cpp
+    src/core/TagStats.h
+    src/core/TagStats.cpp
     src/core/Transaction.h
     src/core/TransactionService.h
     src/core/TransactionService.cpp
@@ -60,6 +62,8 @@ qt_add_library(vaultly_core STATIC
     src/db/CurrencyRepository.cpp
     src/db/Database.h
     src/db/Database.cpp
+    src/db/TagRepository.h
+    src/db/TagRepository.cpp
     src/db/TransactionRepository.h
     src/db/TransactionRepository.cpp
     src/db/UserRepository.h
@@ -89,6 +93,8 @@ qt_add_executable(Vaultly WIN32
     src/ui/Components.cpp
     src/ui/DashboardPage.h
     src/ui/DashboardPage.cpp
+    src/ui/FlowLayout.h
+    src/ui/FlowLayout.cpp
     src/ui/HomePage.h
     src/ui/HomePage.cpp
     src/ui/LoginPage.h
@@ -101,6 +107,10 @@ qt_add_executable(Vaultly WIN32
     src/ui/SidePanel.cpp
     src/ui/SlideStack.h
     src/ui/SlideStack.cpp
+    src/ui/TagInput.h
+    src/ui/TagInput.cpp
+    src/ui/TagSpendingView.h
+    src/ui/TagSpendingView.cpp
     src/ui/Theme.h
     src/ui/Theme.cpp
     src/ui/Toast.h
@@ -123,7 +133,7 @@ qt_add_resources(Vaultly "assets" PREFIX "/" FILES assets/vaultly.png)
 
 enable_testing()
 
-foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update tst_recovery)
+foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update tst_recovery tst_tags)
     qt_add_executable(${test} tests/${test}.cpp)
     target_link_libraries(${test} PRIVATE vaultly_core Qt6::Test)
     add_test(NAME ${test} COMMAND ${test})

@@ -137,12 +137,14 @@ private slots:
         QTemporaryDir dir;
         const QString path = dir.filePath("v1.db");
 
-        // Si costruisce un DB "vecchio": schema v2 riportato a v1, con un utente senza vault_salt.
+        // Si costruisce un DB "vecchio": schema attuale riportato a v1, con un utente senza vault_salt.
         QVERIFY(Database::open(path));
         QVERIFY(AuthService::registerUser("mario", "segreto1", "segreto1").user);
         {
             QSqlQuery q;
-            QVERIFY(q.exec("DROP TABLE vault_entries"));
+            QVERIFY(q.exec("DROP TABLE transaction_tags")); // v3
+            QVERIFY(q.exec("DROP TABLE tags"));
+            QVERIFY(q.exec("DROP TABLE vault_entries"));    // v2
             QVERIFY(q.exec("ALTER TABLE users DROP COLUMN vault_salt"));
             QVERIFY(q.exec("PRAGMA user_version = 1"));
         }
@@ -151,7 +153,7 @@ private slots:
         QVERIFY(Database::open(path));
         QSqlQuery q("PRAGMA user_version");
         QVERIFY(q.next());
-        QCOMPARE(q.value(0).toInt(), 2);
+        QCOMPARE(q.value(0).toInt(), 3);
         const Session session = AuthService::login("mario", "segreto1").session();
         QCOMPARE(session.vaultKey.size(), 32);
         QVERIFY(VaultService::create(session, makeEntry("Gmail")).entry);
