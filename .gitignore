@@ -39,3 +39,6 @@ CMakeUserPresets.json
 .vscode/
 .idea/
 *.user
+
+# Others
+CLAUDE.md
