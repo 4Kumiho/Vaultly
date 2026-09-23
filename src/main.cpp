@@ -1,6 +1,5 @@
 #include "Version.h"
 #include "db/Database.h"
-#include "platform/Updater.h"
 #include "ui/MainWindow.h"
 #include "ui/Theme.h"
 
@@ -14,6 +13,7 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     QApplication::setApplicationName("Vaultly");
+    QApplication::setOrganizationName("Vaultly"); // QSettings: HKCU\Software\Vaultly\Vaultly
     QApplication::setApplicationVersion(VAULTLY_VERSION);
     QApplication::setWindowIcon(QIcon(":/assets/vaultly.png"));
     // Testi dell'app in italiano: date e importi seguono la stessa lingua.
@@ -33,9 +33,6 @@ int main(int argc, char *argv[])
 
     MainWindow window;
     window.show();
-    Updater::start();
-
-    const int result = app.exec();
-    Updater::stop();
-    return result;
+    window.startUpdateChecks();
+    return app.exec();
 }

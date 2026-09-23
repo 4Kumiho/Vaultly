@@ -39,6 +39,23 @@ QLabel#rowIcon[tone="accent"]   { background: rgba(91, 140, 255, 0.16); color: #
 QFrame#listRow { background: transparent; border-radius: 10px; }
 QFrame#listRow:hover { background: #1e222c; }
 
+QProgressBar {
+    background: #0f1115;
+    border: 1px solid #252a35;
+    border-radius: 4px;
+}
+QProgressBar::chunk {
+    border-radius: 3px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8fb0ff, stop:1 #5b8cff);
+}
+QTextBrowser#releaseNotes {
+    background: #12151c;
+    border: 1px solid #252a35;
+    border-radius: 10px;
+    padding: 6px 10px;
+    color: #cfd4df;
+}
+
 QLabel#toast {
     background: #232834;
     color: #e6e8ee;

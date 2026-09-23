@@ -5,7 +5,8 @@
 
 #include <optional>
 
-// Primitive crittografiche. AES-256-GCM e generatore casuale dalle API CNG di Windows (bcrypt).
+// Primitive crittografiche. AES-256-GCM e generatore casuale dalle API CNG di Windows (bcrypt),
+// verifica Ed25519 da Monocypher.
 namespace Crypto {
 
 constexpr int kKeyBytes = 32;
@@ -21,6 +22,10 @@ std::optional<QByteArray> encrypt(const QByteArray &key, const QByteArray &plain
 
 // nullopt se la chiave è sbagliata o i dati sono stati alterati.
 std::optional<QByteArray> decrypt(const QByteArray &key, const QByteArray &blob);
+
+// Verifica una firma Ed25519 (RFC 8032) di `message`. Chiave 32 byte, firma 64 byte.
+// Usata per gli aggiornamenti: le firme le produce winsparkle-tool (vedi scripts/release.ps1).
+bool verifyEd25519(const QByteArray &publicKey, const QByteArray &signature, const QByteArray &message);
 
 // Confronto a tempo costante, per non rivelare quanti byte iniziali coincidono.
 bool constantTimeEquals(const QByteArray &a, const QByteArray &b);

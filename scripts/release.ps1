@@ -1,6 +1,6 @@
 # Prepara una release di Vaultly:
 #   1. compila in Release con l'URL degli aggiornamenti ed esegue i test
-#   2. raccoglie exe + DLL Qt + WinSparkle in dist/
+#   2. raccoglie exe + DLL Qt in dist/
 #   3. crea l'installer con Inno Setup
 #   4. firma l'installer con la chiave privata EdDSA e verifica la firma
 #   5. scrive appcast.xml (il file che le app installate leggono per sapere se c'e' una nuova versione)
@@ -30,8 +30,9 @@ if (-not $repo -or $repo -like '*CAMBIAMI*') { throw "Imposta githubRepo in scri
 $signingKey = Join-Path $env:USERPROFILE '.vaultly\update-signing.key'
 $publicKey = 'YgjC4rRMQjdPz1CfZzWaX7JYjNnO7yXSm7nfsL0MNZ8='
 $qtDir = 'C:\Qt\6.10.3\mingw_64'
-$winSparkleDir = Join-Path $root 'third_party\WinSparkle-0.9.4'
-$winSparkleTool = Join-Path $winSparkleDir 'bin\winsparkle-tool.exe'
+# Di WinSparkle resta solo lo strumento di firma (le app fino alla 1.0.2 usano WinSparkle per aggiornarsi;
+# dalla 1.0.3 la verifica e' in platform/UpdateService, stessa chiave e stesso appcast).
+$winSparkleTool = Join-Path $root 'third_party\WinSparkle-0.9.4\bin\winsparkle-tool.exe'
 $iscc = Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'
 
 foreach ($required in @($signingKey, $winSparkleTool, $iscc)) {
@@ -67,7 +68,6 @@ $dist = Join-Path $root 'dist'
 if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
 New-Item -ItemType Directory $dist | Out-Null
 Copy-Item (Join-Path $buildDir 'Vaultly.exe') $dist
-Copy-Item (Join-Path $winSparkleDir 'x64\Release\WinSparkle.dll') $dist
 Invoke-Checked 'windeployqt' { windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw (Join-Path $dist 'Vaultly.exe') | Out-Null }
 
 # --- 3. Installer ---

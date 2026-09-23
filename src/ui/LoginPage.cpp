@@ -2,14 +2,12 @@
 
 #include "Version.h"
 #include "core/AuthService.h"
-#include "platform/Updater.h"
 #include "ui/Animations.h"
 #include "ui/Components.h"
 
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QTimer>
 #include <QVBoxLayout>
 
 LoginPage::LoginPage(QWidget *parent)
@@ -60,7 +58,7 @@ LoginPage::LoginPage(QWidget *parent)
     about->addStretch();
     layout->addSpacing(6);
     layout->addLayout(about);
-    connect(m_checkUpdates, &QPushButton::clicked, this, [] { Updater::checkNow(); });
+    connect(m_checkUpdates, &QPushButton::clicked, this, &LoginPage::checkUpdatesRequested);
 
     Components::centerIn(this, m_card);
     setFocusProxy(m_username);
@@ -71,11 +69,9 @@ LoginPage::LoginPage(QWidget *parent)
     connect(registerButton, &QPushButton::clicked, this, &LoginPage::registerRequested);
 }
 
-void LoginPage::showEvent(QShowEvent *event)
+void LoginPage::setUpdateCheckAvailable(bool available)
 {
-    QWidget::showEvent(event);
-    // Updater::start() parte dopo che la finestra è comparsa: si controlla al giro successivo.
-    QTimer::singleShot(0, this, [this] { m_checkUpdates->setVisible(Updater::isAvailable()); });
+    m_checkUpdates->setVisible(available);
 }
 
 void LoginPage::reset()

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 # Versione dell'app: si alza qui a ogni release (vedi scripts/release.ps1).
-project(Vaultly VERSION 1.0.2 LANGUAGES CXX)
+project(Vaultly VERSION 1.0.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Charts Network Test)
 qt_standard_project_setup()
 
-# --- Aggiornamenti automatici (WinSparkle) ---
+# --- Aggiornamenti automatici (platform/UpdateService) ---
 set(VAULTLY_GITHUB_REPO "" CACHE STRING
     "Repository GitHub (proprietario/nome) delle release. Vuoto = aggiornamenti disattivati.")
 if(VAULTLY_GITHUB_REPO)
@@ -19,7 +19,13 @@ else()
 endif()
 # Chiave pubblica: può stare nel repository. La privata sta in %USERPROFILE%\.vaultly.
 set(VAULTLY_UPDATE_PUBLIC_KEY "YgjC4rRMQjdPz1CfZzWaX7JYjNnO7yXSm7nfsL0MNZ8=")
-set(WINSPARKLE_DLL "${CMAKE_SOURCE_DIR}/third_party/WinSparkle-0.9.4/x64/Release/WinSparkle.dll")
+
+# Monocypher (BSD/CC0), solo per verificare le firme Ed25519 degli aggiornamenti.
+add_library(monocypher STATIC
+    external/monocypher/monocypher.c
+    external/monocypher/monocypher-ed25519.c
+)
+target_include_directories(monocypher PUBLIC external/monocypher)
 
 configure_file(src/Version.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/Version.h" @ONLY)
 
@@ -28,6 +34,8 @@ qt_add_library(vaultly_core STATIC
     src/core/Account.h
     src/core/AccountService.h
     src/core/AccountService.cpp
+    src/core/Appcast.h
+    src/core/Appcast.cpp
     src/core/AuthService.h
     src/core/AuthService.cpp
     src/core/BalanceHistory.h
@@ -60,13 +68,13 @@ qt_add_library(vaultly_core STATIC
     src/db/VaultRepository.cpp
 )
 target_include_directories(vaultly_core PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}/generated")
-target_link_libraries(vaultly_core PUBLIC Qt6::Sql Qt6::Network bcrypt)
+target_link_libraries(vaultly_core PUBLIC Qt6::Sql Qt6::Network bcrypt PRIVATE monocypher)
 
 qt_add_executable(Vaultly WIN32
     src/app.rc
     src/main.cpp
-    src/platform/Updater.h
-    src/platform/Updater.cpp
+    src/platform/UpdateService.h
+    src/platform/UpdateService.cpp
     src/ui/AccountCard.h
     src/ui/AccountCard.cpp
     src/ui/AccountPanel.h
@@ -101,6 +109,8 @@ qt_add_executable(Vaultly WIN32
     src/ui/TransactionList.cpp
     src/ui/TransactionPanel.h
     src/ui/TransactionPanel.cpp
+    src/ui/UpdateOverlay.h
+    src/ui/UpdateOverlay.cpp
     src/ui/VaultPage.h
     src/ui/VaultPage.cpp
     src/ui/VaultPanel.h
@@ -111,16 +121,9 @@ target_link_libraries(Vaultly PRIVATE vaultly_core Qt6::Widgets Qt6::Charts)
 # Icona (generata da tools/make-icon): nel .rc per l'exe, qui per finestra e schermate.
 qt_add_resources(Vaultly "assets" PREFIX "/" FILES assets/vaultly.png)
 
-# WinSparkle.dll accanto all'exe (si carica a runtime, vedi platform/Updater).
-# Si scarica con scripts/fetch-deps.ps1; se manca, l'app funziona senza aggiornamenti.
-if(EXISTS "${WINSPARKLE_DLL}")
-    add_custom_command(TARGET Vaultly POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${WINSPARKLE_DLL}" "$<TARGET_FILE_DIR:Vaultly>")
-endif()
-
 enable_testing()
 
-foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault)
+foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update)
     qt_add_executable(${test} tests/${test}.cpp)
     target_link_libraries(${test} PRIVATE vaultly_core Qt6::Test)
     add_test(NAME ${test} COMMAND ${test})

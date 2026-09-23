@@ -1,9 +1,11 @@
 #include "ui/MainWindow.h"
 
+#include "platform/UpdateService.h"
 #include "ui/HomePage.h"
 #include "ui/LoginPage.h"
 #include "ui/RegisterPage.h"
 #include "ui/SlideStack.h"
+#include "ui/UpdateOverlay.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -11,6 +13,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_login(new LoginPage)
     , m_register(new RegisterPage)
     , m_home(new HomePage)
+    , m_updates(new UpdateService(this))
+    , m_updateOverlay(new UpdateOverlay(m_updates, this))
 {
     setWindowTitle("Vaultly");
     setMinimumSize(960, 640);
@@ -45,4 +49,12 @@ MainWindow::MainWindow(QWidget *parent)
         m_login->reset();
         m_stack->slideTo(m_login, Direction::Backward);
     });
+
+    m_login->setUpdateCheckAvailable(m_updates->isEnabled());
+    connect(m_login, &LoginPage::checkUpdatesRequested, m_updateOverlay, &UpdateOverlay::checkNow);
+}
+
+void MainWindow::startUpdateChecks()
+{
+    m_updates->startAutomaticChecks();
 }

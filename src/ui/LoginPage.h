@@ -19,12 +19,14 @@ public:
     // Svuota i campi e gli errori (es. dopo il logout).
     void reset();
 
+    // Mostra il link "Cerca aggiornamenti" (nascosto nelle build senza aggiornamenti).
+    // Non "setUpdatesEnabled": in QWidget quel nome blocca il ridisegno.
+    void setUpdateCheckAvailable(bool available);
+
 signals:
     void loggedIn(const Session &session);
     void registerRequested();
-
-protected:
-    void showEvent(QShowEvent *event) override;
+    void checkUpdatesRequested();
 
 private:
     void submit();

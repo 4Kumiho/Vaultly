@@ -2,6 +2,10 @@
 
 #include <QPasswordDigestor>
 
+extern "C" {
+#include "monocypher-ed25519.h"
+}
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -125,6 +129,17 @@ std::optional<QByteArray> Crypto::decrypt(const QByteArray &key, const QByteArra
                                       ULONG(plain.size()), &written, 0)))
         return std::nullopt;
     return plain;
+}
+
+bool Crypto::verifyEd25519(const QByteArray &publicKey, const QByteArray &signature, const QByteArray &message)
+{
+    if (publicKey.size() != 32 || signature.size() != 64)
+        return false;
+    // Ed25519 non c'è nelle API CNG di Windows 10: si usa Monocypher (external/monocypher).
+    return crypto_ed25519_check(reinterpret_cast<const uint8_t *>(signature.constData()),
+                                reinterpret_cast<const uint8_t *>(publicKey.constData()),
+                                reinterpret_cast<const uint8_t *>(message.constData()), size_t(message.size()))
+        == 0;
 }
 
 bool Crypto::constantTimeEquals(const QByteArray &a, const QByteArray &b)
