@@ -83,6 +83,24 @@ QProgressBar#tagBar::chunk {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5b8cff, stop:1 #8fb0ff);
 }
 QProgressBar#tagBar[tone="muted"]::chunk { background: #3a4152; }
+QProgressBar#tagBar[tone="ok"]::chunk { background: #34d399; }
+QProgressBar#tagBar[tone="warning"]::chunk { background: #f5a524; }
+QProgressBar#tagBar[tone="over"]::chunk { background: #ff6b6b; }
+QLabel[role="budgetStatus"] { color: #8b93a7; font-size: 8.5pt; font-weight: 600; }
+QLabel[role="budgetStatus"][tone="warning"] { color: #f5b544; }
+QLabel[role="budgetStatus"][tone="negative"] { color: #ff8a8a; }
+QLabel#toast[tone="warning"] { background: #2b2415; border-color: #f5a524; color: #ffd28a; }
+QLabel#toast[tone="danger"] { background: #2d1a1d; border-color: #ff6b6b; color: #ffb4b4; }
+QDateEdit {
+    background: #0f1115;
+    border: 1px solid #2a2f3a;
+    border-radius: 10px;
+    padding: 0 12px;
+    min-height: 40px;
+    color: #e6e8ee;
+}
+QDateEdit:focus { border-color: #5b8cff; }
+QDateEdit::drop-down { border: none; width: 30px; }
 
 QListView {
     background: #171a21;

@@ -27,8 +27,9 @@ public:
     void openForEdit(qint64 userId, const Account &account, const Transaction &transaction);
 
 signals:
-    // Un movimento è stato salvato o eliminato.
-    void changed();
+    // Un movimento è stato salvato o eliminato. `expenseTags`: etichette dell'uscita appena
+    // salvata (per controllare i tetti di spesa); vuoto per entrate ed eliminazioni.
+    void changed(const QStringList &expenseTags);
 
 private:
     void prepare(const QString &title);

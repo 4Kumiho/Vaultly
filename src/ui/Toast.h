@@ -14,7 +14,8 @@ class Toast : public QLabel
 public:
     explicit Toast(QWidget *host);
 
-    void showMessage(const QString &message);
+    // `tone`: "" (neutro) | "warning" (giallo) | "danger" (rosso).
+    void showMessage(const QString &message, const QString &tone = {});
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

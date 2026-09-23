@@ -61,7 +61,8 @@ HomePage::HomePage(QWidget *parent)
 
     connect(m_nav, &SegmentedControl::currentChanged, this, &HomePage::showSection);
     connect(logoutButton, &QPushButton::clicked, this, &HomePage::logout);
-    connect(m_vault, &VaultPage::notify, m_toast, &Toast::showMessage);
+    connect(m_vault, &VaultPage::notify, m_toast, [this](const QString &message) { m_toast->showMessage(message); });
+    connect(m_dashboard, &DashboardPage::notify, m_toast, &Toast::showMessage);
 }
 
 void HomePage::setSession(const Session &session)

@@ -153,7 +153,7 @@ private slots:
         QVERIFY(Database::open(path));
         QSqlQuery q("PRAGMA user_version");
         QVERIFY(q.next());
-        QCOMPARE(q.value(0).toInt(), 3);
+        QCOMPARE(q.value(0).toInt(), 4);
         const Session session = AuthService::login("mario", "segreto1").session();
         QCOMPARE(session.vaultKey.size(), 32);
         QVERIFY(VaultService::create(session, makeEntry("Gmail")).entry);

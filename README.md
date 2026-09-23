@@ -17,7 +17,7 @@
 
 - **Conti**: crea uno o più conti (conto corrente, carta, contanti, risparmi…), ognuno con la sua valuta: euro, dollaro, sterlina, franco svizzero o yen.
 - **Entrate e uscite**: registra ogni movimento con importo, categoria (Casa, Spesa, Trasporti, Stipendio…), data e una descrizione.
-- **Etichette**: aggiungi alle spese etichette tue, come "vacanza", "auto" o "regali", e scopri quanto spendi per ciascuna.
+- **Etichette e tetti di spesa**: crea etichette tue, come "viaggio Roma", "auto" o "regali", con una scadenza (settimanale, mensile o tra due date) e un tetto di spesa. Vaultly ti mostra quanto spendi per ciascuna e ti avvisa quando stai per superare il tetto.
 - **Grafico del saldo**: guarda come cambia il tuo saldo nell'ultimo giorno, settimana, mese, 6 mesi, anno o da sempre, con zoom e spostamento col mouse.
 - **Password**: conserva login e password dei tuoi account (email, banca, streaming…) in un'area **cifrata**, con un generatore di password sicure.
 - **Più persone sullo stesso PC**: ognuno ha il suo utente, con username e password, e vede solo i propri dati.
@@ -79,21 +79,39 @@ Clicca **+ Aggiungi movimento** e compila il pannello:
 
 Il saldo si aggiorna subito. Per **modificare o eliminare** un movimento, cliccalo nella lista. Per eliminare devi cliccare **due volte** su "Elimina movimento", per evitare errori.
 
-### 4. Usa le etichette per sapere quanto spendi
+### 4. Etichette, scadenze e tetti di spesa
 
-![Spese per etichetta](docs/images/etichette.png)
+Le etichette ti dicono **quanto spendi per qualcosa**, per esempio un viaggio, l'auto o le cene fuori, e ti avvisano se stai spendendo troppo.
 
-Nel campo **Etichette** scrivi un nome, per esempio `vacanza Roma`, e premi **Invio**: diventa un'etichetta. Puoi metterne più d'una sulla stessa spesa, e Vaultly ti suggerisce quelle che hai già usato. Per togliere un'etichetta clicca la **×**.
+**Mettere un'etichetta su una spesa.** Nel pannello del movimento, nel campo **Etichette**, scrivi un nome, per esempio `viaggio Roma`, e premi **Invio**. Puoi metterne più d'una sulla stessa spesa, e Vaultly ti suggerisce quelle che hai già. Se l'etichetta non esiste ancora viene creata; per toglierla da una spesa clicca la **×**.
 
-Nel riquadro **Spese per etichetta** vedi quanto hai speso per ciascuna nel periodo scelto:
+**Creare un'etichetta con scadenza e tetto.** In fondo alla dashboard, sotto i movimenti, c'è il riquadro **Etichette**. Clicca **+ Nuova etichetta**, oppure **Modifica** accanto a un'etichetta che hai già:
 
-- **clicca un'etichetta** per vedere nella lista solo i suoi movimenti; per tornare a vedere tutto clicca **Mostra tutti**;
-- una spesa con più etichette conta in ognuna;
-- le etichette che non usi più spariscono da sole.
+![Modifica di un'etichetta](docs/images/etichetta-tetto.png)
+
+- **Scadenza**: il periodo in cui contare la spesa:
+  - **Nessuna**: da sempre;
+  - **Settimanale**: la settimana in corso, e il conteggio riparte ogni lunedì;
+  - **Mensile**: il mese in corso, e riparte il primo del mese;
+  - **Date**: dal giorno al giorno che scegli tu, per esempio un viaggio dal 20 al 30 settembre.
+- **Tetto di spesa** (facoltativo): quanto vuoi spendere al massimo in quel periodo, per esempio 300 €. Si può superare, ma Vaultly ti avvisa. Il tetto conta le spese con quell'etichetta su **tutti i tuoi conti** nella stessa valuta.
+
+**Il riquadro Etichette:**
+
+![Riquadro Etichette](docs/images/etichette.png)
+
+- Per le etichette con tetto vedi **quanto hai speso su quanto puoi spendere**. La barra è verde finché va tutto bene, **gialla quando arrivi all'80%**, **rossa quando superi il tetto**, e sotto trovi quanto ti resta o di quanto l'hai superato.
+- Per le etichette senza tetto vedi quanto hai speso sul conto e nel periodo che stai guardando.
+- **Clicca un'etichetta** per vedere nella lista solo i suoi movimenti; per tornare a vedere tutto clicca **Mostra tutti**.
+- Una spesa con più etichette conta in ognuna.
+
+**Gli avvisi.** Quando salvi una spesa che porta un'etichetta all'80% o oltre il tetto, in basso compare un messaggio giallo o rosso. Lo stesso avviso compare quando accedi, se hai tetti superati o quasi.
+
+**Eliminare un'etichetta.** Da **Modifica** → **Elimina etichetta**. Viene tolta dalle spese, ma le spese restano.
 
 ### 5. Leggi il grafico
 
-In alto a destra scegli il periodo: **1G** (un giorno), **1S** (una settimana), **1M**, **6M**, **1A** o **Tutto**. Il periodo vale anche per la lista dei movimenti, per i totali di entrate e uscite e per le etichette.
+In alto a destra scegli il periodo: **1G** (un giorno), **1S** (una settimana), **1M**, **6M**, **1A** o **Tutto**. Il periodo vale anche per la lista dei movimenti, per i totali di entrate e uscite e per le etichette senza tetto. Quelle con tetto seguono la loro scadenza.
 
 Sul grafico:
 

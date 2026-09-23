@@ -11,7 +11,7 @@
 
 namespace {
 
-constexpr int kSchemaVersion = 3;
+constexpr int kSchemaVersion = 4;
 // Versione più vecchia che importUsersFrom sa leggere (i DB della 1.0.3 sono v2).
 constexpr int kOldestImportableVersion = 2;
 
@@ -85,6 +85,17 @@ const char *const kSchemaV3[] = {
         PRIMARY KEY (transaction_id, tag_id)
     ))",
     "CREATE INDEX idx_txtags_tag ON transaction_tags(tag_id)",
+};
+
+// v4: scadenza e tetto di spesa delle etichette. period: none | weekly | monthly | range
+// (range usa start_date/end_date, 'yyyy-MM-dd'); budget in unità minime di currency_code, NULL = nessun tetto.
+const char *const kSchemaV4[] = {
+    "ALTER TABLE tags ADD COLUMN period TEXT NOT NULL DEFAULT 'none' "
+    "CHECK (period IN ('none', 'weekly', 'monthly', 'range'))",
+    "ALTER TABLE tags ADD COLUMN start_date TEXT",
+    "ALTER TABLE tags ADD COLUMN end_date TEXT",
+    "ALTER TABLE tags ADD COLUMN budget INTEGER CHECK (budget IS NULL OR budget > 0)",
+    "ALTER TABLE tags ADD COLUMN currency_code TEXT REFERENCES currencies(code)",
 };
 
 struct CurrencySeed
@@ -182,6 +193,11 @@ bool createSchemaV3(QSqlDatabase &db, QString *error)
     return execAll(db, kSchemaV3, error);
 }
 
+bool createSchemaV4(QSqlDatabase &db, QString *error)
+{
+    return execAll(db, kSchemaV4, error);
+}
+
 } // namespace
 
 bool Database::open(const QString &path, QString *error)
@@ -205,7 +221,7 @@ bool Database::open(const QString &path, QString *error)
     // Migrazioni in ordine, tutte nella stessa transazione.
     db.transaction();
     if ((version < 1 && !createSchemaV1(db, error)) || (version < 2 && !createSchemaV2(db, error))
-        || (version < 3 && !createSchemaV3(db, error))) {
+        || (version < 3 && !createSchemaV3(db, error)) || (version < 4 && !createSchemaV4(db, error))) {
         db.rollback();
         return false;
     }
@@ -242,10 +258,16 @@ QList<qint64> ids(QSqlDatabase &db, const QString &sql, const QVariantList &valu
     return result;
 }
 
-// Copia utenti, conti, movimenti (con le etichette, se `otherHasTags`) e voci dell'area password
-// dal DB "other" (già ATTACH). Gli id cambiano; le categorie si abbinano per nome e tipo.
-bool copyUsers(QSqlDatabase &db, bool otherHasTags, int *imported, QString *error)
+// Copia utenti, conti, movimenti (con le etichette dalla v3, con scadenza e tetto dalla v4) e voci
+// dell'area password dal DB "other" (già ATTACH, schema `otherVersion`). Gli id cambiano;
+// le categorie si abbinano per nome e tipo.
+bool copyUsers(QSqlDatabase &db, int otherVersion, int *imported, QString *error)
 {
+    const bool otherHasTags = otherVersion >= 3;
+    const char *const copyTagSql = otherVersion >= 4
+        ? "INSERT INTO main.tags (user_id, name, period, start_date, end_date, budget, currency_code) "
+          "SELECT ?, name, period, start_date, end_date, budget, currency_code FROM other.tags WHERE id = ?"
+        : "INSERT INTO main.tags (user_id, name) SELECT ?, name FROM other.tags WHERE id = ?";
     bool ok = true;
     const auto userIds = ids(db,
                              "SELECT id FROM other.users "
@@ -271,8 +293,7 @@ bool copyUsers(QSqlDatabase &db, bool otherHasTags, int *imported, QString *erro
             if (!ok)
                 return false;
             for (const qint64 oldTag : tagIds) {
-                if (!run(q, "INSERT INTO main.tags (user_id, name) SELECT ?, name FROM other.tags WHERE id = ?",
-                         {newUser, oldTag}, error))
+                if (!run(q, copyTagSql, {newUser, oldTag}, error))
                     return false;
                 tagMap.insert(oldTag, q.lastInsertId().toLongLong());
             }
@@ -357,7 +378,7 @@ std::optional<int> Database::importUsersFrom(const QString &otherPath, int *conf
 
             int imported = 0;
             db.transaction();
-            if (copyUsers(db, otherVersion >= 3, &imported, error) && db.commit())
+            if (copyUsers(db, otherVersion, &imported, error) && db.commit())
                 result = imported;
             else
                 db.rollback();

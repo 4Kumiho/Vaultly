@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/Tag.h"
 #include "core/Transaction.h"
 
 #include <optional>
@@ -7,7 +8,7 @@
 namespace TransactionService {
 
 constexpr int kMaxTags = 10;
-constexpr int kMaxTagLength = 30;
+constexpr int kMaxTagLength = kMaxTagNameLength;
 
 struct Result
 {
@@ -16,7 +17,7 @@ struct Result
 };
 
 // Controlla importo, categoria (deve essere del tipo giusto), data, etichette e che il conto
-// sia dell'utente. Le etichette nuove vengono create, quelle non più usate eliminate.
+// sia dell'utente. Le etichette scritte che non esistono ancora vengono create.
 Result create(qint64 userId, const Transaction &transaction);
 Result update(qint64 userId, const Transaction &transaction);
 bool remove(qint64 userId, qint64 transactionId);

@@ -1,7 +1,9 @@
 #include "ui/DashboardPage.h"
 
 #include "core/Money.h"
+#include "core/TagService.h"
 #include "core/TagStats.h"
+#include "db/CurrencyRepository.h"
 #include "db/AccountRepository.h"
 #include "db/TransactionRepository.h"
 #include "ui/AccountCard.h"
@@ -10,6 +12,7 @@
 #include "ui/Animations.h"
 #include "ui/BalanceChart.h"
 #include "ui/Components.h"
+#include "ui/TagPanel.h"
 #include "ui/TagSpendingView.h"
 #include "ui/TransactionList.h"
 #include "ui/TransactionPanel.h"
@@ -104,12 +107,60 @@ DashboardPage::DashboardPage(QWidget *overlayHost, QWidget *parent)
 
     m_accountPanel = new AccountPanel(overlayHost);
     m_transactionPanel = new TransactionPanel(overlayHost);
+    m_tagPanel = new TagPanel(overlayHost);
 
     connect(m_accountPanel, &AccountPanel::saved, this,
             [this](const Account &account) { reloadAccounts(account.id); });
     connect(m_accountPanel, &AccountPanel::deleted, this, [this] { reloadAccounts(); });
-    connect(m_transactionPanel, &TransactionPanel::changed, this,
-            [this] { reloadAccounts(m_selectedId, false); });
+    connect(m_transactionPanel, &TransactionPanel::changed, this, [this](const QStringList &expenseTags) {
+        reloadAccounts(m_selectedId, false);
+        warnAboutBudgets(expenseTags);
+    });
+    connect(m_tagPanel, &TagPanel::changed, this, [this] {
+        // Un'etichetta rinominata o eliminata cambia i movimenti: si ricarica tutto e si toglie il filtro.
+        m_tagFilter.reset();
+        reloadAccounts(m_selectedId, false);
+    });
+}
+
+QList<Currency> DashboardPage::accountCurrencies() const
+{
+    QList<Currency> result;
+    for (const Account &a : m_accounts) {
+        const bool known = std::any_of(result.cbegin(), result.cend(),
+                                       [&a](const Currency &c) { return c.code == a.currency.code; });
+        if (!known)
+            result.append(a.currency);
+    }
+    return result.isEmpty() ? CurrencyRepository::all() : result;
+}
+
+void DashboardPage::warnAboutBudgets(const QStringList &onlyTags)
+{
+    QStringList over;
+    QStringList near;
+    for (const Tag &tag : TagService::list(m_user.id)) {
+        if (!tag.budget || (!onlyTags.isEmpty() && !onlyTags.contains(tag.name, Qt::CaseInsensitive)))
+            continue;
+        const BudgetStatus s = TagService::status(m_user.id, tag);
+        if (s.finished || s.upcoming)
+            continue;
+        Currency currency{tag.currencyCode, tag.currencyCode, 2};
+        for (const Currency &c : CurrencyRepository::all()) {
+            if (c.code == tag.currencyCode)
+                currency = c;
+        }
+        const QString line = tr("\"%1\" %2 su %3")
+                                 .arg(tag.name, Money::format(s.spent, currency), Money::format(s.budget, currency));
+        if (s.level == BudgetStatus::Level::Over)
+            over << line;
+        else if (s.level == BudgetStatus::Level::Warning)
+            near << line;
+    }
+    if (!over.isEmpty())
+        emit notify(tr("Tetto di spesa superato: %1").arg(over.join(", ")), "danger");
+    else if (!near.isEmpty())
+        emit notify(tr("Quasi al tetto di spesa: %1").arg(near.join(", ")), "warning");
 }
 
 QWidget *DashboardPage::buildAccountView()
@@ -190,27 +241,6 @@ QWidget *DashboardPage::buildAccountView()
     topRow->addWidget(balanceCard);
     topRow->addWidget(chartCard, 1);
 
-    // Spese per etichetta, sotto il grafico.
-    auto *tagCard = Components::card(view);
-    m_tagPeriodLabel = Components::label({}, "muted", tagCard);
-    m_tagView = new TagSpendingView(tagCard);
-    auto *tagTitles = new QVBoxLayout;
-    tagTitles->setSpacing(2);
-    tagTitles->addWidget(Components::label(tr("Spese per etichetta"), "sectionTitle", tagCard));
-    tagTitles->addWidget(m_tagPeriodLabel);
-    auto *tagHint = Components::label(
-        tr("Clicca un'etichetta per vederne i movimenti.\nUna spesa con più etichette conta in ciascuna."), "hint",
-        tagCard);
-    tagHint->setAlignment(Qt::AlignRight | Qt::AlignTop);
-    auto *tagTop = new QHBoxLayout;
-    tagTop->addLayout(tagTitles, 1);
-    tagTop->addWidget(tagHint, 0, Qt::AlignTop);
-    auto *tagLayout = new QVBoxLayout(tagCard);
-    tagLayout->setContentsMargins(24, 22, 24, 18);
-    tagLayout->setSpacing(12);
-    tagLayout->addLayout(tagTop);
-    tagLayout->addWidget(m_tagView);
-
     // Movimenti, sotto.
     auto *listCard = Components::card(view);
     m_periodLabel = Components::label({}, "muted", listCard);
@@ -238,12 +268,45 @@ QWidget *DashboardPage::buildAccountView()
     listLayout->addLayout(listTop);
     listLayout->addWidget(m_list);
 
+    // Etichette, sotto i movimenti: spese, scadenze e tetti di spesa.
+    auto *tagCard = Components::card(view);
+    m_tagPeriodLabel = Components::label({}, "muted", tagCard);
+    m_tagView = new TagSpendingView(tagCard);
+    auto *newTagButton = Components::button(tr("+  Nuova etichetta"), "secondary", tagCard);
+    auto *tagTitles = new QVBoxLayout;
+    tagTitles->setSpacing(2);
+    tagTitles->addWidget(Components::label(tr("Etichette"), "sectionTitle", tagCard));
+    tagTitles->addWidget(m_tagPeriodLabel);
+    auto *tagTop = new QHBoxLayout;
+    tagTop->addLayout(tagTitles, 1);
+    tagTop->addWidget(newTagButton, 0, Qt::AlignVCenter);
+    auto *tagHint = Components::label(tr("Clicca un'etichetta per vederne i movimenti. Una spesa con più etichette "
+                                         "conta in ciascuna. I tetti contano le spese su tutti i conti nella loro "
+                                         "valuta; ti avvisiamo all'80% e quando li superi."),
+                                      "hint", tagCard);
+    tagHint->setWordWrap(true);
+    auto *tagLayout = new QVBoxLayout(tagCard);
+    tagLayout->setContentsMargins(24, 22, 24, 18);
+    tagLayout->setSpacing(12);
+    tagLayout->addLayout(tagTop);
+    tagLayout->addWidget(tagHint);
+    tagLayout->addWidget(m_tagView);
+
     auto *layout = new QVBoxLayout(view);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(18);
     layout->addLayout(topRow);
-    layout->addWidget(tagCard);
     layout->addWidget(listCard);
+    layout->addWidget(tagCard);
+
+    connect(newTagButton, &QPushButton::clicked, this,
+            [this] { m_tagPanel->openForCreate(m_user.id, accountCurrencies()); });
+    connect(m_tagView, &TagSpendingView::editRequested, this, [this](qint64 tagId) {
+        for (const Tag &tag : TagService::list(m_user.id)) {
+            if (tag.id == tagId)
+                m_tagPanel->openForEdit(m_user.id, accountCurrencies(), tag);
+        }
+    });
 
     // Filtro della lista per etichetta: cliccare di nuovo la stessa lo toglie.
     connect(m_tagView, &TagSpendingView::tagClicked, this, [this](const QString &tag) {
@@ -303,12 +366,15 @@ void DashboardPage::setUser(const User &user)
     // Primo accesso: il pannello entra appena finita la transizione di pagina.
     if (m_accounts.isEmpty())
         QTimer::singleShot(500, this, [this] { m_accountPanel->openForCreate(m_user.id); });
+    else
+        QTimer::singleShot(900, this, [this] { warnAboutBudgets({}); });
 }
 
 void DashboardPage::dismissPanels()
 {
     m_accountPanel->dismiss(false);
     m_transactionPanel->dismiss(false);
+    m_tagPanel->dismiss(false);
 }
 
 void DashboardPage::reloadAccounts(qint64 selectAccountId, bool animate)
@@ -392,8 +458,7 @@ void DashboardPage::refreshAccountView()
     };
     m_income->setText(withSign("+", totals.income));
     m_expense->setText(withSign(QLocale().negativeSign(), totals.expense));
-    m_tagPeriodLabel->setText(period);
-    m_tagView->setReport(TagStats::expensesByTag(m_transactions, from, end), account->currency, m_tagFilter);
+    refreshTags(*account, from, end, period);
 
     // Filtro per etichetta: "" = uscite senza etichetta.
     const auto matchesFilter = [this](const Transaction &t) {
@@ -416,6 +481,38 @@ void DashboardPage::refreshAccountView()
     m_clearFilter->setVisible(m_tagFilter.has_value());
     m_list->setTransactions(visible, account->currency,
                             m_tagFilter ? tr("Nessun movimento con questo filtro nel periodo.") : QString());
+}
+
+void DashboardPage::refreshTags(const Account &account, const QDateTime &from, const QDateTime &to,
+                                const QString &period)
+{
+    m_tagPeriodLabel->setText(tr("Spese su questo conto: %1").arg(period.toLower()));
+
+    // Spesa del periodo e del conto della dashboard, per le etichette senza tetto.
+    const TagStats::Report report = TagStats::expensesByTag(m_transactions, from, to);
+    const auto spendingFor = [&report](const QString &name) {
+        for (const auto &s : report.tags) {
+            if (s.tag.compare(name, Qt::CaseInsensitive) == 0)
+                return s;
+        }
+        return TagStats::Spending{name, 0, 0};
+    };
+    const QList<Currency> currencies = CurrencyRepository::all();
+
+    QList<TagSpendingView::Item> items;
+    for (const Tag &tag : TagService::list(m_user.id)) {
+        TagSpendingView::Item item;
+        item.tag = tag;
+        item.status = TagService::status(m_user.id, tag);
+        item.spending = spendingFor(tag.name);
+        item.budgetCurrency = account.currency;
+        for (const Currency &c : currencies) {
+            if (c.code == tag.currencyCode)
+                item.budgetCurrency = c;
+        }
+        items.append(item);
+    }
+    m_tagView->setItems(items, report.untagged, account.currency, period, m_tagFilter);
 }
 
 const Account *DashboardPage::findAccount(qint64 accountId) const

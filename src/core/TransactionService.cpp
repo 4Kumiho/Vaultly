@@ -1,5 +1,6 @@
 #include "core/TransactionService.h"
 
+#include "core/Tag.h"
 #include "db/AccountRepository.h"
 #include "db/CategoryRepository.h"
 #include "db/TagRepository.h"
@@ -25,11 +26,8 @@ QString tr(const char *text)
 QString normalizeTags(QStringList &tags)
 {
     QStringList clean;
-    for (QString tag : std::as_const(tags)) {
-        tag = tag.trimmed();
-        while (tag.startsWith('#'))
-            tag.remove(0, 1);
-        tag = tag.simplified();
+    for (const QString &raw : std::as_const(tags)) {
+        const QString tag = normalizeTagName(raw);
         if (tag.isEmpty())
             continue;
         if (tag.size() > TransactionService::kMaxTagLength)
@@ -68,7 +66,7 @@ QString validate(qint64 userId, Transaction &t)
     return {};
 }
 
-// Collega le etichette al movimento (creando quelle nuove) e toglie quelle rimaste inutilizzate.
+// Collega le etichette al movimento, creando quelle nuove (senza scadenza né tetto).
 bool saveTags(qint64 userId, const Transaction &t)
 {
     QList<qint64> tagIds;
@@ -78,10 +76,7 @@ bool saveTags(qint64 userId, const Transaction &t)
             return false;
         tagIds.append(*id);
     }
-    if (!TagRepository::setForTransaction(t.id, tagIds))
-        return false;
-    TagRepository::deleteUnused(userId);
-    return true;
+    return TagRepository::setForTransaction(t.id, tagIds);
 }
 
 } // namespace
@@ -127,10 +122,7 @@ TransactionService::Result TransactionService::update(qint64 userId, const Trans
 
 bool TransactionService::remove(qint64 userId, qint64 transactionId)
 {
-    if (!TransactionRepository::remove(transactionId, userId))
-        return false;
-    TagRepository::deleteUnused(userId);
-    return true;
+    return TransactionRepository::remove(transactionId, userId);
 }
 
 QStringList TransactionService::tagSuggestions(qint64 userId)

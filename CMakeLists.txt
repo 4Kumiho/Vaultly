@@ -45,6 +45,10 @@ qt_add_library(vaultly_core STATIC
     src/core/Currency.h
     src/core/Money.h
     src/core/Money.cpp
+    src/core/Tag.h
+    src/core/Tag.cpp
+    src/core/TagService.h
+    src/core/TagService.cpp
     src/core/TagStats.h
     src/core/TagStats.cpp
     src/core/Transaction.h
@@ -109,6 +113,8 @@ qt_add_executable(Vaultly WIN32
     src/ui/SlideStack.cpp
     src/ui/TagInput.h
     src/ui/TagInput.cpp
+    src/ui/TagPanel.h
+    src/ui/TagPanel.cpp
     src/ui/TagSpendingView.h
     src/ui/TagSpendingView.cpp
     src/ui/Theme.h
@@ -133,7 +139,7 @@ qt_add_resources(Vaultly "assets" PREFIX "/" FILES assets/vaultly.png)
 
 enable_testing()
 
-foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update tst_recovery tst_tags)
+foreach(test tst_auth tst_money tst_accounts tst_transactions tst_balance tst_crypto tst_vault tst_update tst_recovery tst_tags tst_budget)
     qt_add_executable(${test} tests/${test}.cpp)
     target_link_libraries(${test} PRIVATE vaultly_core Qt6::Test)
     add_test(NAME ${test} COMMAND ${test})

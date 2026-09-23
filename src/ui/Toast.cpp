@@ -1,12 +1,16 @@
 #include "ui/Toast.h"
 
+#include "ui/Components.h"
+
 #include <QEvent>
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 
 namespace {
 constexpr int kVisibleMs = 2600;
+constexpr int kWarningVisibleMs = 7000; // gli avvisi restano di più
 constexpr int kBottomMargin = 32;
+constexpr int kMaxWidth = 640;
 } // namespace
 
 Toast::Toast(QWidget *host)
@@ -16,6 +20,9 @@ Toast::Toast(QWidget *host)
 {
     setObjectName("toast");
     setAttribute(Qt::WA_TransparentForMouseEvents);
+    setWordWrap(true);
+    setAlignment(Qt::AlignCenter);
+    setMaximumWidth(kMaxWidth);
     m_effect->setOpacity(0.0);
     setGraphicsEffect(m_effect);
     hide();
@@ -33,15 +40,17 @@ Toast::Toast(QWidget *host)
     host->installEventFilter(this);
 }
 
-void Toast::showMessage(const QString &message)
+void Toast::showMessage(const QString &message, const QString &tone)
 {
+    setProperty("tone", tone);
+    Components::repolish(this);
     setText(message);
     adjustSize();
     reposition();
     show();
     raise();
     fadeTo(1.0);
-    m_hideTimer.start(kVisibleMs);
+    m_hideTimer.start(tone.isEmpty() ? kVisibleMs : kWarningVisibleMs);
 }
 
 bool Toast::eventFilter(QObject *watched, QEvent *event)

@@ -177,7 +177,8 @@ void TransactionPanel::save()
         Animations::shake(drawer());
         return;
     }
-    emit changed();
+    const bool isExpense = result.transaction->type == TransactionType::Expense;
+    emit changed(isExpense ? result.transaction->tags : QStringList());
     dismiss();
 }
 
@@ -193,6 +194,6 @@ void TransactionPanel::deleteClicked()
         m_error->showMessage(tr("Impossibile eliminare il movimento."));
         return;
     }
-    emit changed();
+    emit changed({});
     dismiss();
 }

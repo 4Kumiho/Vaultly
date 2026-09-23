@@ -18,11 +18,12 @@ class QFrame;
 class QHBoxLayout;
 class QLabel;
 class QPushButton;
+class TagPanel;
 class TagSpendingView;
 class TransactionList;
 class TransactionPanel;
 
-// Sezione "Conti": schede dei conti, saldo, grafico e movimenti.
+// Sezione "Conti": schede dei conti, saldo, grafico, movimenti ed etichette.
 class DashboardPage : public QWidget
 {
     Q_OBJECT
@@ -32,8 +33,13 @@ public:
     explicit DashboardPage(QWidget *overlayHost, QWidget *parent = nullptr);
 
     // Carica i conti dell'utente. Se non ne ha, apre subito il pannello di creazione.
+    // Se ci sono tetti di spesa superati o quasi, avvisa.
     void setUser(const User &user);
     void dismissPanels();
+
+signals:
+    // Messaggio breve da mostrare; `tone`: "" | "warning" | "danger".
+    void notify(const QString &message, const QString &tone);
 
 private:
     QWidget *buildAccountView();
@@ -43,8 +49,13 @@ private:
     // `animate`: fa ricomparire le schede in cascata (solo quando cambia l'elenco dei conti).
     void reloadAccounts(qint64 selectAccountId = 0, bool animate = true);
     void selectAccount(qint64 accountId);
-    // Aggiorna grafico, totali e lista per il conto e il periodo correnti.
+    // Aggiorna grafico, totali, lista ed etichette per il conto e il periodo correnti.
     void refreshAccountView();
+    void refreshTags(const Account &account, const QDateTime &from, const QDateTime &to, const QString &period);
+    // Avvisa se le etichette con tetto (tutte, o solo `onlyTags`) sono all'80% o oltre.
+    void warnAboutBudgets(const QStringList &onlyTags);
+    // Valute dei conti dell'utente (per il tetto di spesa delle etichette).
+    QList<Currency> accountCurrencies() const;
     const Account *findAccount(qint64 accountId) const;
 
     User m_user;
@@ -74,4 +85,5 @@ private:
 
     AccountPanel *m_accountPanel;
     TransactionPanel *m_transactionPanel;
+    TagPanel *m_tagPanel;
 };

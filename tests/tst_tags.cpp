@@ -93,29 +93,26 @@ private slots:
         QCOMPARE(count("transactions"), 0); // niente salvato a metà
     }
 
-    void unusedTagsDisappear()
+    void unusedTagsStay()
     {
-        auto t = *TransactionService::create(m_user, expense(m_account, 1000, {"vecchia", "resta"})).transaction;
-        QVERIFY(TransactionService::create(m_user, expense(m_account, 500, {"resta"})).transaction);
-
+        // Le etichette le gestisce l'utente: non spariscono quando nessun movimento le usa.
+        auto t = *TransactionService::create(m_user, expense(m_account, 1000, {"vecchia"})).transaction;
         t.tags = {"nuova"};
         QVERIFY(TransactionService::update(m_user, t).transaction);
-        QCOMPARE(TransactionService::tagSuggestions(m_user), QStringList({"nuova", "resta"}));
+        QCOMPARE(TransactionService::tagSuggestions(m_user), QStringList({"nuova", "vecchia"}));
 
         QVERIFY(TransactionService::remove(m_user, t.id));
-        QCOMPARE(TransactionService::tagSuggestions(m_user), QStringList({"resta"}));
+        QCOMPARE(TransactionService::tagSuggestions(m_user), QStringList({"nuova", "vecchia"}));
     }
 
-    void deletingAccountCleansTags()
+    void deletingAccountKeepsTags()
     {
         QVERIFY(TransactionService::create(m_user, expense(m_account, 1000, {"auto"})).transaction);
-        QVERIFY(AccountService::remove(*AccountService::create(m_user, "x", kEur, 0).account)); // conto vuoto
-        QCOMPARE(count("tags"), 1);
         Account account;
         account.id = m_account;
         account.userId = m_user;
         QVERIFY(AccountService::remove(account));
-        QCOMPARE(count("tags"), 0);
+        QCOMPARE(count("tags"), 1);
         QCOMPARE(count("transaction_tags"), 0);
     }
 
@@ -126,12 +123,11 @@ private slots:
         const qint64 annaAccount = AccountService::create(anna, "Conto", kEur, 0).account->id;
         QVERIFY(TransactionService::tagSuggestions(anna).isEmpty());
 
-        // Stesso nome per Anna: etichetta separata; cancellarla non tocca quella di Mario.
-        auto t = *TransactionService::create(anna, expense(annaAccount, 100, {"segreta"})).transaction;
+        // Stesso nome per Anna: etichetta separata.
+        QVERIFY(TransactionService::create(anna, expense(annaAccount, 100, {"segreta"})).transaction);
         QCOMPARE(count("tags"), 2);
-        QVERIFY(TransactionService::remove(anna, t.id));
         QCOMPARE(TransactionService::tagSuggestions(m_user), QStringList({"segreta"}));
-        QVERIFY(TransactionService::tagSuggestions(anna).isEmpty());
+        QCOMPARE(TransactionService::tagSuggestions(anna), QStringList({"segreta"}));
     }
 
     void spendingByTag()
@@ -174,7 +170,7 @@ private slots:
         QVERIFY(Database::open(path));
         QSqlQuery q("PRAGMA user_version");
         QVERIFY(q.next());
-        QCOMPARE(q.value(0).toInt(), 3);
+        QCOMPARE(q.value(0).toInt(), 4);
         QVERIFY(TransactionService::create(user, expense(account, 1000, {"dopo migrazione"})).transaction);
         Database::close();
         QVERIFY(Database::open(":memory:")); // per cleanup()
